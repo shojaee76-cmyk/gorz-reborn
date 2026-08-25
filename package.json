@@ -1,0 +1,22 @@
+{
+  "name": "gorz-reborn",
+  "version": "1.0.0",
+  "description": "گرز نو — browser-based Persian turn-based strategy game (rebuild of gorz.ir mechanics)",
+  "main": "server/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server/index.js",
+    "test": "node test/e2e.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^11.10.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "express-session": "^1.18.1",
+    "socket.io": "^4.8.1"
+  }
+}
