@@ -53,9 +53,14 @@ function knowledgeMult(knowledge) {
 
 // Per-unit-type power of a soldier group.
 // power = attack * count * (1 + knowledgeMult)
+// Fix (root verification 2026-08-25): apply the knowledge multiplier to the
+// unit's ATTACK (per unit), so trained/knowledgeable units keep their power
+// advantage through the fight. Previously the mult only inflated the log's
+// `totalPower` while kills used unmodified attack — trained armies were no
+// stronger than recruits, and battles always ended in a rout/draw.
 function unitPower(type, attack, count, knowledge) {
   const mult = knowledgeMult(knowledge);
-  return attack * count * mult;
+  return Math.round(attack * mult) * count;
 }
 
 // Full army power for a user: Σ unit power × hero mult × terrain.
@@ -315,6 +320,11 @@ function finalizeBattle(battleId, attackerId, defenderId, result) {
       adjust(uid, { gold: reward.gold, kind: 'battle', note: `نتیجه نبرد: ${reward.outcome}` });
       const leveled = grantCommanderXp(user, reward.xp);
 
+      // hero XP: the commander's best hero gains the battle XP too
+      // (DESIGN-v1.md §4.3: heroes gain XP from battles; level-ups give diamonds).
+      const bestHero = heroes.list(uid)[0] || null;
+      const heroGain = bestHero ? heroes.addXp(uid, bestHero.id, reward.xp) : null;
+
       // knowledge to each surviving soldier group
       const knowledgeGains = [];
       for (const u of side.army) {
@@ -326,7 +336,7 @@ function finalizeBattle(battleId, attackerId, defenderId, result) {
       // ranking + win/loss counters
       ranking.applyBattleResult(uid, reward.outcome);
 
-      rewards[key] = { ...reward, knowledgeGains, leveled };
+      rewards[key] = { ...reward, knowledgeGains, leveled, heroGain };
     }
 
     // mission progress (battle/win missions)
