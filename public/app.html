@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>گرز نو — داشبورد فرمانده</title>
+  <meta name="description" content="گرز نو — داشبورد فرمانده" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='0.9em' font-size='90'%3E%E2%9A%94%EF%B8%8F%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="css/app.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <!-- top bar -->
+    <header class="topbar">
+      <a href="/" class="brand" id="brand-link" title="گرز نو">
+        <span class="mace">⚔️</span>
+        <span>گرز نو<span class="sub">GORZ REBORN</span></span>
+      </a>
+
+      <div class="statbar">
+        <span class="stat-pill level" title="سطح فرمانده"><span class="ic">⭐</span><span class="label">سطح</span> <span class="val num" id="sb-level">—</span></span>
+        <span class="stat-pill gold" title="سکهٔ طلا"><span class="ic">🪙</span><span class="val num" id="sb-gold">—</span></span>
+        <span class="stat-pill diamond" title="الماس"><span class="ic">💎</span><span class="val num" id="sb-diamond">—</span></span>
+        <button class="btn btn-sm btn-ghost" id="btn-logout" title="خروج">خروج</button>
+      </div>
+    </header>
+
+    <!-- nav -->
+    <nav class="mainnav" id="mainnav">
+      <button data-panel="overview" class="active">نمای کلی</button>
+      <button data-panel="barracks">سربازخانه</button>
+      <button data-panel="heroes">قهرمان‌ها</button>
+      <button data-panel="battle">نبرد</button>
+      <button data-panel="market">بازارچه</button>
+      <button data-panel="bank">بانک</button>
+      <button data-panel="missions">ماموریت‌ها</button>
+      <button data-panel="ranking">رتبه‌بندی</button>
+    </nav>
+
+    <!-- content -->
+    <main class="content">
+
+      <!-- ============ overview ============ -->
+      <section id="panel-overview" class="panel active">
+        <div class="panel-head">
+          <h2>نمای کلی</h2>
+          <p>خلاصهٔ وضعیت لشگر و فرماندهی شما.</p>
+        </div>
+        <div class="overview-grid" id="ov-grid">
+          <div class="ov-card level">
+            <div class="ov-ic">⭐</div>
+            <div><div class="ov-label">سطح</div><div class="ov-val num" id="ov-level">—</div></div>
+          </div>
+          <div class="ov-card gold">
+            <div class="ov-ic">🪙</div>
+            <div><div class="ov-label">طلای در دست</div><div class="ov-val num" id="ov-gold">—</div></div>
+          </div>
+          <div class="ov-card diamond">
+            <div class="ov-ic">💎</div>
+            <div><div class="ov-label">الماس</div><div class="ov-val num" id="ov-diamond">—</div></div>
+          </div>
+          <div class="ov-card rank">
+            <div class="ov-ic">🏅</div>
+            <div><div class="ov-label">امتیاز رتبه‌بندی</div><div class="ov-val num" id="ov-rank">—</div></div>
+          </div>
+        </div>
+
+        <div class="grid grid-2">
+          <div class="card">
+            <h3><span class="ic">🛡️</span>لشگر شما</h3>
+            <div id="ov-army"><div class="placeholder">در حال بارگذاری…</div></div>
+          </div>
+          <div class="card">
+            <h3><span class="ic">⚡</span>قهرمان برتر</h3>
+            <div id="ov-hero"><div class="placeholder">در حال بارگذاری…</div></div>
+          </div>
+        </div>
+
+        <div class="card mt-16">
+          <h3><span class="ic">🏆</span>ماموریت‌های فعال</h3>
+          <div id="ov-missions"><div class="placeholder">در حال بارگذاری…</div></div>
+        </div>
+      </section>
+
+      <!-- ============ barracks ============ -->
+      <section id="panel-barracks" class="panel">
+        <div class="panel-head">
+          <h2>سربازخانه</h2>
+          <p>سربازان خود را آموزش بده و لشگری شکست‌ناپذیر بساز.</p>
+        </div>
+
+        <div class="card mb-16">
+          <div class="tp-panel">
+            <div class="tp-main">
+              <span class="tp-val num" id="tp-val">—</span>
+              <span class="tp-cap">از <span class="num" id="tp-cap">—</span> امتیاز آموزش</span>
+              <span class="tp-note">هر ۱۰ دقیقه ۱ امتیاز برمی‌گردد</span>
+            </div>
+            <div class="progress" style="max-width: 300px;"><div class="fill" id="tp-fill" style="width: 0%"></div></div>
+          </div>
+        </div>
+
+        <div class="grid grid-3" id="barracks-units"><div class="placeholder">در حال بارگذاری…</div></div>
+      </section>
+
+      <!-- ============ heroes ============ -->
+      <section id="panel-heroes" class="panel">
+        <div class="panel-head">
+          <h2>قهرمان‌ها</h2>
+          <p>قهرمانان شما در نبردها تجربه می‌گیرند و ارتقا می‌یابند.</p>
+        </div>
+        <div class="grid grid-2" id="heroes-list"><div class="placeholder">در حال بارگذاری…</div></div>
+      </section>
+
+      <!-- ============ battle ============ -->
+      <section id="panel-battle" class="panel">
+        <div id="battle-page"></div>
+        <div id="battle-history" class="mt-16"></div>
+      </section>
+
+      <!-- ============ market ============ -->
+      <section id="panel-market" class="panel">
+        <div class="panel-head">
+          <h2>بازارچه</h2>
+          <p>سرباز و الماس را بین فرماندهان دادوستد کن. کارمزد هر معامله ۵٪ است.</p>
+        </div>
+
+        <div class="market-layout">
+          <div>
+            <div class="card market-card">
+              <h3><span class="ic">🛒</span>آگهی‌های بازار</h3>
+              <div id="market-listings"><div class="placeholder">در حال بارگذاری…</div></div>
+            </div>
+            <div class="card market-card">
+              <h3><span class="ic">📦</span>آگهی‌های من</h3>
+              <div id="market-mine"><div class="placeholder">در حال بارگذاری…</div></div>
+            </div>
+          </div>
+
+          <div>
+            <div class="card">
+              <h3><span class="ic">📤</span>ثبت آگهی جدید</h3>
+              <form id="sell-form" class="sell-form">
+                <div class="form-group" style="margin-bottom:0">
+                  <label for="sell-type">کالا</label>
+                  <select id="sell-type">
+                    <option value="swordsman">شمشیرزن</option>
+                    <option value="archer">کمان‌دار</option>
+                    <option value="cavalry">سوار</option>
+                    <option value="diamond">الماس</option>
+                  </select>
+                </div>
+                <div class="row">
+                  <div class="form-group" style="margin-bottom:0">
+                    <label for="sell-qty">تعداد</label>
+                    <input type="number" id="sell-qty" min="1" value="1" />
+                  </div>
+                  <div class="form-group" style="margin-bottom:0">
+                    <label for="sell-price">قیمت (طلا)</label>
+                    <input type="number" id="sell-price" min="1" value="100" />
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">ثبت آگهی</button>
+                <p class="small dim center">کارمزد ۵٪ هنگام فروش از فروشنده کسر می‌شود.</p>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ bank ============ -->
+      <section id="panel-bank" class="panel">
+        <div class="panel-head">
+          <h2>بانک</h2>
+          <p>صورتحساب کامل سکه‌ها و الماس‌های شما.</p>
+        </div>
+
+        <div class="grid grid-2 mb-16">
+          <div class="ov-card gold">
+            <div class="ov-ic">🪙</div>
+            <div><div class="ov-label">موجودی طلا</div><div class="ov-val num" id="bk-gold">—</div></div>
+          </div>
+          <div class="ov-card diamond">
+            <div class="ov-ic">💎</div>
+            <div><div class="ov-label">موجودی الماس</div><div class="ov-val num" id="bk-diamond">—</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3><span class="ic">📒</span>صورتحساب (۵۰ تراکنش آخر)</h3>
+          <div id="bank-ledger"><div class="placeholder">در حال بارگذاری…</div></div>
+        </div>
+      </section>
+
+      <!-- ============ missions ============ -->
+      <section id="panel-missions" class="panel">
+        <div class="panel-head">
+          <h2>ماموریت‌ها</h2>
+          <p>ماموریت‌ها را کامل کن و جایزه بگیر؛ پیشرفت‌ها خودکار به‌روز می‌شوند.</p>
+        </div>
+        <div class="grid grid-2" id="missions-list"><div class="placeholder">در حال بارگذاری…</div></div>
+      </section>
+
+      <!-- ============ ranking ============ -->
+      <section id="panel-ranking" class="panel">
+        <div class="panel-head">
+          <h2>رتبه‌بندی جهانی</h2>
+          <p>برترین فرماندهان گرز نو — بر پایهٔ امتیاز نبرد.</p>
+        </div>
+        <div class="card">
+          <div id="ranking-list"><div class="placeholder">در حال بارگذاری…</div></div>
+        </div>
+      </section>
+
+    </main>
+
+    <footer class="footer">
+      گرز نو · بازآفرینی بازی استراتژی گرز · ساخته‌شده با <span class="sep">♥</span> برای فرماندهان فارسی‌زبان
+    </footer>
+  </div>
+
+  <div class="toasts" id="toasts"></div>
+
+  <!-- socket.io client (served by the backend) + W2 battle UI -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="js/battle.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
