@@ -135,24 +135,40 @@ router.post('/missions/claim', requireAuth, wrap((req, res) => {
   res.json({ ok: true, ...result });
 }));
 
-// ---------------- ranking ----------------
+// ---------------- ranking ---------------- (W2)
+const battles = require('./game/battles');
+const ranking = require('./game/ranking');
+
 // BATTLE-ROUTES-START (W2 owns battle + ranking sections)
-// Basic leaderboard (W1 provides; W2 may extend with filters).
+// Global commander leaderboard (wins-weighted, close-level tie-break).
 router.get('/ranking', (req, res) => {
-  const rows = db.prepare('SELECT id, email, level, xp, ranking_score, wins, losses, prize_points FROM users ORDER BY ranking_score DESC, level DESC LIMIT 50').all();
-  res.json({ ok: true, ranking: rows.map((r) => ({ ...r, email: r.email })) });
+  const limit = parseInt(req.query.limit, 10) || 50;
+  const rows = ranking.leaderboard({ limit });
+  res.json({ ok: true, ranking: rows });
 });
 
-// Battle endpoints — W1 stubs. W2 implements server/game/battles.js
-// and fills these in with the real turn-based engine.
+// Enter battle: matchmaking + full fight in one call (turn-based engine).
 router.post('/battle/enter', requireAuth, wrap((req, res) => {
-  res.status(501).json({ ok: false, error: 'موتور نبرد هنوز فعال نشده است.' });
+  const result = battles.enterBattle(req.user.id);
+  res.json({ ok: true, ...result });
 }));
 
+// Open a challenge: wait for another commander to join (state='open').
+router.post('/battle/open', requireAuth, wrap((req, res) => {
+  const battle = battles.openChallenge(req.user.id);
+  res.json({ ok: true, battle });
+}));
+
+// Battle state + full log (only participants may view).
 router.get('/battle/status/:id', requireAuth, (req, res) => {
-  const b = db.prepare('SELECT * FROM battles WHERE id = ?').get(req.params.id);
-  if (!b) return res.status(404).json({ error: 'نبرد یافت نشد.' });
+  const b = battles.battleStatus(req.params.id, req.user.id);
   res.json({ ok: true, battle: b });
+});
+
+// Recent battles involving the current commander.
+router.get('/battle/history', requireAuth, (req, res) => {
+  const limit = parseInt(req.query.limit, 10) || 10;
+  res.json({ ok: true, battles: battles.battleHistory(req.user.id, limit) });
 });
 // BATTLE-ROUTES-END
 

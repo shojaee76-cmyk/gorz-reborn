@@ -35,8 +35,9 @@ Node.js + Express + Socket.IO + SQLite (better-sqlite3) · vanilla JS frontend �
 ## Progress log
 - 2026-08-25 — Research done: gorz.ir fully mapped (game systems, tech stack, wiki manual, 510 Wayback captures). Verdict: no public source; rebuild feasible. Kanban board `gorz-reborn` created; spec `docs/DESIGN-v1.md` written from archived docs. Pipeline: W1 backend → W2 battle/realtime → W3 frontend → ROOT verify.
 - 2026-08-25 — W1 backend core DONE: server/ (index.js, db.js, auth.js, routes.js, game/{balance,heroes,barracks,bank,market,missions,errors}.js), package.json, 9 SQLite tables, 12 Persian missions, admin seed (admin@gorz.ir / gorz1234). Battle stubs in routes.js for W2. E2E (npm test, 24 checks) green: register→train→mission→market→bank. Server boots :3000 zero errors.
+- 2026-08-25 — W2 battle engine + realtime DONE: server/game/battles.js (matchmaking via open challenges + close-level fresh match, turn-based combat engine with rout/draw, battle power formula, rewards gold/XP/knowledge, battle persistence with log_json), server/game/ranking.js (wins-weighted score, leaderboard), routes.js battle/ranking sections (enter/open/status/history/ranking), socket.io wiring in index.js (per-user + per-battle rooms, session-auth, battle:join/leave/enter, live battle:finished to both players), public/js/battle.js (battle UI: enter, result render, turn log, history, socket live updates). E2E extended to 48 checks including two-user battle → winner → ranking delta (+20/-5) → socket events for both players. Server boots :3000 zero errors.
 
 ## Next steps
-- [ ] W2 battle engine + realtime (server/game/battles.js, ranking.js, socket wiring, battle UI)
+- [x] W2 battle engine + realtime (server/game/battles.js, ranking.js, socket wiring, battle UI)
 - [ ] W3 frontend + RTL theme (public/**)
 - [ ] ROOT: full verification + E2E
