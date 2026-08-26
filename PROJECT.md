@@ -1,7 +1,7 @@
 # Gorz Reborn (گرز نو)
 
-**Status:** ✅ Done — full pipeline verified (kanban W1→W2→W3→ROOT)
-**Last updated:** 2026-08-25
+**Status:** 🎮 Battle v2 LIVE — battles rebuilt as interactive tactical combat (WeGo orders on a 9×7 grid)
+**Last updated:** 2026-08-26
 
 ## What is this?
 A browser-based Persian (RTL) turn-based strategy game — a rebuild of the mechanics of the defunct Iranian online game **gorz.ir (گرز)** by Ewalk Studio (2011–2025, 110K+ users). Original game shut down; source is proprietary and not public. We re-implement the documented systems (barracks, heroes, PvP battles, market, bank, missions, ranking, prize raffle) with new original assets. For personal use by capit.
@@ -13,7 +13,7 @@ Node.js + Express + Socket.IO + SQLite (better-sqlite3) · vanilla JS frontend �
 - Commander registration/login (bcrypt sessions)
 - Barracks: soldier training (swordsman/archer/cavalry), training points, knowledge caps
 - Heroes: XP, leveling, battle modifiers
-- Turn-based PvP battles with live battle log (Socket.IO), matchmaking by level
+- Turn-based PvP battles → **v2: interactive tactical combat** (see Progress log 2026-08-26), matchmaking by level, live rounds via Socket.IO
 - Market: trade listings with 5% fee
 - Bank: gold + diamonds ledger
 - Missions: 10+ seeded with rewards
@@ -40,9 +40,18 @@ Node.js + Express + Socket.IO + SQLite (better-sqlite3) · vanilla JS frontend �
 - 2026-08-25 — ROOT verification PASSED (kanban t_94d4e9fd): every DESIGN-v1 §6 acceptance item verified with real output — git log shows [W1]/[W2]/[W3] commits (dbae1d8, e8aeaf1, 448b85e); npm install clean; npm start boots :3000 zero errors; landing + all static assets 200 (fonts/OFL/socket.io client included); fresh-DB boot smoke verified seeding (hero + 100 swordsmen + 1000 gold + 100 diamonds) and the full register→train→market→bank→mission→ranking→battle journey; E2E 48/48 green twice. UI: lang="fa" dir="rtl", all nav/panel strings Persian, 0 external runtime refs, Vazirmatn woff2 ×4 + OFL vendored locally.
   - **FIXES made by ROOT (root verification, battle engine):** (1) `unitPower()` applied the knowledge multiplier only to the log's `totalPower` while kills used unmodified attack — trained/knowledgeable armies were no stronger than recruits, so every battle ended in draw/rout after 3 turns. Fixed to apply the multiplier per-unit to attack (`Math.round(attack*mult)*count`). (2) Battles granted gold + commander XP but never hero XP — the DESIGN requires "Hero gains XP/levels from battle". Added `heroes.addXp(uid, bestHero.id, reward.xp)` in `finalizeBattle()` (level-ups award diamonds via heroes.js). After the fix: hero XP 0→40→140 across two battles, decisive win recorded (wins=1, userXP 140), ranking deltas correct, full E2E still 48/48.
   - Verified artifacts: `verify-live.js` (25-check live API smoke) + `verify-xp.js` (hero XP/level evidence) kept in repo root for re-runs. Stale pre-W3 dev server on :3000 was killed before booting the committed code.
+- 2026-08-26 — **BATTLE v2: interactive tactical combat** (user verdict on v1: "just a random scenario, not a game" — correct; the old engine auto-resolved with zero player input). Rebuilt from scratch:
+  - `server/game/tactics.js` — pure simulation core (no DB): 9×7 grid battlefield, squads (≤25 soldiers each, max 8/side), simultaneous-turn WeGo rounds (movement → simultaneous strikes → atomic counters → morale/routs → outcome), terrain (forest +35% def & blocks cavalry charge, hill +15% atk), stances (advance/hold/assault), focus-fire volleys (+20%), cavalry charge after a 2-cell move (×1.6), morale breaks + routs, seeded mulberry32 RNG with serializable state (`serializeState`/`restoreState`, bit-exact freeze→restore verified). AI commander (`aiOrders`) for absent opponents.
+  - Balance fairness proven by Monte-Carlo: identical armies split 53/45/2 over 100 AI-vs-AI fights (a hidden defender buff from sequential counter application was found via damage instrumentation and fixed by computing all counters against pre-counter state); stronger army wins 10/10 asymmetric matchups. Fights last ~5-8 rounds. All knobs in `balance.js#TACTICS` + boot-time missing-knob guard.
+  - `server/game/battles.js` rewritten: matchmaking unchanged; enterBattle deploys the grid and returns a live view; per-round orders via POST `/api/battle/orders/:id` (or socket `battle:orders`); round resolution emits `battle:round` replay events; 45s order timer with in-process AI timers + deadline sweep (AFK/disconnect fallback — verified by itest-afk.js); REAL casualties persisted to soldiers.count at finalize (v1 never deducted losses!), knowledge only to survivors, same gold/xp/ranking economy as v1. `GORZ_BATTLE_MODE=auto` keeps the legacy one-shot behavior for tests/demos.
+  - DB migration: battles table += battle_state_json, orders_json, turn_deadline, round (additive ALTERs, idempotent).
+  - Client `public/js/battle.js` fully rebuilt: grid board render (viewer's army always at bottom), click squad → move ring + stance buttons + focus-fire target, countdown, animated round replay (move/strike/counter/rout floats), power bars, finished screen with casualties/rewards/log. New CSS section in app.css using existing design tokens.
+  - Tests: legacy E2E 48/48 GREEN (auto mode via GORZ_BATTLE_MODE=auto in test env); new test/itest-battle.js (full interactive battle through HTTP API), test/itest-afk.js (AI deadline), test/live-smoke.js (live :3000 probe), test/contract-check.js (client↔server surface alignment).
+  - Ops note: killing the dev server requires killing the actual node child (npm wrapper leaves orphans holding :3000 → EADDRINUSE; use netstat to find PID, Stop-Process to kill).
 
 ## Next steps
 - [x] W2 battle engine + realtime (server/game/battles.js, ranking.js, socket wiring, battle UI)
 - [x] W3 frontend + RTL theme (public/**)
 - [x] ROOT: full verification + E2E (2026-08-25, all DESIGN-v1 §6 items green; 2 battle-engine fixes)
-- [ ] Optional future: prize raffle cycle, archer/cavalry balance pass, deployment
+- [x] Battle v2: interactive tactical combat (2026-08-26 — grid WeGo orders, morale, terrain, real casualties; E2E 48/48 + interactive itests green)
+- [ ] Optional future: prize raffle cycle, unit balance pass after playtesting, deploy

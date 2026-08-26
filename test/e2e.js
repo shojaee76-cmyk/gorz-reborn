@@ -86,7 +86,7 @@ async function testLiveBattleSockets(cookieA, cookieB) {
 async function main() {
   console.log('Gorz Reborn E2E — starting test server on :' + PORT);
   serverProc = spawn(process.execPath, [path.join(ROOT, 'server', 'index.js')], {
-    env: { ...process.env, PORT: String(PORT), GORZ_DB: TEST_DB },
+    env: { ...process.env, PORT: String(PORT), GORZ_DB: TEST_DB, GORZ_BATTLE_MODE: 'auto' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   serverProc.stdout.on('data', () => {});

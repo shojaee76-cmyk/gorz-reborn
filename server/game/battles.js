@@ -1,36 +1,45 @@
 'use strict';
 // ============================================================
-// Gorz Reborn — battles.js
-// Turn-based PvP battle engine (DESIGN-v1.md §4.4).
+// Gorz Reborn — battles.js (v2, interactive tactical combat)
 //
-//  - enterBattle(userId): matchmaking picks a suitable opponent
-//    (close in level), snapshots both armies, runs the fight.
-//  - Turn engine: every turn both sides' units strike each other;
-//    casualties from attack vs defense; battle ends on rout or
-//    BATTLE.maxTurns draw.
-//  - Power formula (§4.4): power = Σ units.attack * count
-//    * (1 + knowledgeMult) * heroMult * terrainMod
-//  - Rewards: gold, XP, knowledge; ranking via ranking.js.
-//  - Persists battles (state, log_json, winner_id) to DB.
-//  - Live: emits per-turn events into the battle's socket room.
+// Battle flow (interactive mode):
+//   1. enterBattle(): matchmaking (unchanged), snapshots BOTH armies,
+//      deploys squads on the tactics grid, persists live state,
+//      emits battle:start. Round 1 begins.
+//   2. Each round both commanders submit orders
+//      (submitOrders): move destination, focus-fire target, stance.
+//      When both are in, the round resolves server-side (movement ->
+//      simultaneous strikes -> counters -> morale -> outcome), the
+//      replay events are emitted (battle:round), state re-persisted.
+//   3. A side that misses the order window gets AI orders
+//      (in-process timer + lazy deadline sweep for restarts).
+//   4. Outcome -> applyBattleResult(): REAL casualties persisted to
+//      soldiers.count, rewards (gold/xp/knowledge to SURVIVORS),
+//      ranking, missions, commander/hero XP — then battle:finished.
+//
+// GORZ_BATTLE_MODE=auto resolves the entire battle instantly with
+// aiOrders for both sides (used by the E2E suite + quick demos);
+// responses keep the legacy shape (winner/log/rewards in one call).
+//
+// All simulation math lives in game/tactics.js; all knobs in balance.js.
 // ============================================================
 const { db } = require('../db');
-const { BATTLE, SOLDIERS, PLAYER } = require('./balance');
+const { SOLDIERS, BATTLE, TACTICS } = require('./balance');
 const { GameError } = require('./errors');
 const { adjust } = require('./bank');
 const barracks = require('./barracks');
 const heroes = require('./heroes');
 const missions = require('./missions');
 const ranking = require('./ranking');
+const tactics = require('./tactics');
+
+const INTERACTIVE = (process.env.GORZ_BATTLE_MODE || 'interactive') !== 'auto';
 
 // Socket.IO instance, attached by server/index.js (avoid require cycle).
 let io = null;
 function setIo(instance) {
   io = instance;
 }
-// Emit a battle event to the battle room AND both players' personal
-// rooms, so any authenticated socket for those users receives it even
-// if it never explicitly joined the battle room.
 function emitToBattle(battleId, attackerId, defenderId, event, payload) {
   if (!io) return;
   io.to(`battle:${battleId}`).emit(event, payload);
@@ -41,76 +50,23 @@ function emitToBattle(battleId, attackerId, defenderId, event, payload) {
 // Open challenges expire after this many seconds (battles.created_at).
 const OPEN_BATTLE_TTL_SECONDS = 120;
 
-// ---------------- power / army helpers ----------------
-
-// +10% attack/defense per knowledge level (mirror KNOWLEDGE.perLevelMult).
-const KNOWLEDGE_PER_LEVEL_MULT = 0.1;
-
-// Knowledge multiplier: +10% attack/defense per knowledge level.
-function knowledgeMult(knowledge) {
-  return 1 + barracks.knowledgeLevel(knowledge) * KNOWLEDGE_PER_LEVEL_MULT;
-}
-
-// Per-unit-type power of a soldier group.
-// power = attack * count * (1 + knowledgeMult)
-// Fix (root verification 2026-08-25): apply the knowledge multiplier to the
-// unit's ATTACK (per unit), so trained/knowledgeable units keep their power
-// advantage through the fight. Previously the mult only inflated the log's
-// `totalPower` while kills used unmodified attack — trained armies were no
-// stronger than recruits, and battles always ended in a rout/draw.
-function unitPower(type, attack, count, knowledge) {
-  const mult = knowledgeMult(knowledge);
-  return Math.round(attack * mult) * count;
-}
-
-// Full army power for a user: Σ unit power × hero mult × terrain.
-// Snapshot: caller decides the hero row; terrain from BATTLE.terrain.
-function armyPower(army, hero, terrain = 'plain') {
-  const terrainMod = BATTLE.terrain[terrain] || 1.0;
-  let raw = 0;
-  for (const u of army) {
-    if (!u || u.count <= 0) continue;
-    raw += unitPower(u.type, u.attack, u.count, u.knowledge);
-  }
-  const heroMult = hero ? 1 + hero.attack_mod + hero.defense_mod : 1;
-  return raw * heroMult * terrainMod;
-}
-
-// Snapshot a user's army + best hero into a stable battle-side object.
-// One terrain is rolled per battle and shared by both sides.
-function snapshotSide(userId, terrainOverride) {
-  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
-  if (!user) throw new GameError(404, 'کاربر یافت نشد.');
-  const army = barracks.army(userId).map((s) => ({
-    type: s.type,
-    name: SOLDIERS[s.type].name,
-    count: s.count,
-    attack: s.attack,
-    defense: s.defense,
-    knowledge: s.knowledge,
-    knowledge_level: s.knowledge_level,
-  }));
-  const bestHero = heroes.list(userId)[0] || null;
-  const hero = bestHero
-    ? { id: bestHero.id, name: bestHero.name, level: bestHero.level, ...heroes.modifier(bestHero) }
-    : null;
-  const terrain = terrainOverride || pickTerrain();
-  return { user_id: userId, army, hero, terrain, power: armyPower(army, hero, terrain) };
-}
-
-// Deterministic terrain roll (uniform across all 3 types).
-function pickTerrain() {
-  const keys = Object.keys(BATTLE.terrain);
-  return keys[Math.floor(Math.random() * keys.length)];
-}
+// ---------------- schema migration ----------------
+// Live battles need their state frozen between rounds.
+try {
+  db.exec(`ALTER TABLE battles ADD COLUMN battle_state_json TEXT`);
+} catch (e) { /* column exists */ }
+try {
+  db.exec(`ALTER TABLE battles ADD COLUMN orders_json TEXT`);
+} catch (e) { /* column exists */ }
+try {
+  db.exec(`ALTER TABLE battles ADD COLUMN turn_deadline INTEGER`);
+} catch (e) { /* column exists */ }
+try {
+  db.exec(`ALTER TABLE battles ADD COLUMN round INTEGER NOT NULL DEFAULT 0`);
+} catch (e) { /* column exists */ }
 
 // ---------------- matchmaking ----------------
-
-// Find a suitable opponent: highest-priority open battle first,
-// else a random user within a level window (closest level first).
 function findOpponent(userId, level) {
-  // Open challenges: battles where attacker == defender (state 'open').
-  // Only fresh ones (within the TTL window) are joinable.
   const open = db
     .prepare(
       `SELECT * FROM battles
@@ -124,8 +80,6 @@ function findOpponent(userId, level) {
     return { battleId: b.id, attackerId: b.attacker_id, defenderId: b.defender_id, isOpen: true };
   }
 
-  // Fresh match: prefer users close in level, exclude self, prefer
-  // opponents who aren't already in a live battle.
   const candidates = db
     .prepare(
       `SELECT u.id, u.level, u.email
@@ -145,234 +99,527 @@ function findOpponent(userId, level) {
   return { attackerId: pick.id, defenderId: userId, isOpen: false };
 }
 
-// ---------------- engine ----------------
-
-// Compute one side's strikes against the other. Returns a map of
-// type -> { killed, totalPower } for the target side, plus the
-// attacking side's total strike power.
-// Kills are proportional to power share and bounded so a single turn
-// can't wipe out an entire army (casualties taper as units die).
-function resolveStrikes(attacker, defender) {
-  const strikes = {};
-  let strikePower = 0;
-  for (const u of attacker.army) {
-    if (u.count <= 0) continue;
-    const p = unitPower(u.type, u.attack, u.count, u.knowledge);
-    if (p <= 0) continue;
-    strikes[u.type] = { killed: 0, totalPower: p };
-    strikePower += p;
-  }
-  if (strikePower <= 0) return { strikes, strikePower, kills: {} };
-
-  const defTotal = defender.army.reduce((acc, u) => acc + u.defense * u.count, 0) || 1;
-  const kills = {};
-  for (const u of defender.army) {
-    if (u.count <= 0) continue;
-    const share = (u.defense * u.count) / defTotal;
-    // Casualty fraction scales with relative power, decays as the
-    // defender loses units (share drops). Capped at 45% per turn so
-    // a fight always lasts several turns.
-    let killed = Math.floor(strikePower * share * 0.1);
-    killed = Math.min(killed, Math.ceil(u.count * 0.45), u.count);
-    if (killed > 0) kills[u.type] = killed;
-  }
-  return { strikes, strikePower, kills };
+function assertNotInBattle(userId) {
+  const inBattle = db
+    .prepare("SELECT id FROM battles WHERE (attacker_id = ? OR defender_id = ?) AND state IN ('open','running')")
+    .get(userId, userId);
+  if (inBattle) throw new GameError(400, 'شما هم‌اکنون در یک نبرد هستید.');
 }
 
-// Execute one turn. Returns events describing casualties for the log.
-// Each event names the ACTING side and the units they destroyed.
-function runTurn(state, turn) {
-  const events = [];
-  const a = state.attacker;
-  const d = state.defender;
+// ---------------- side building ----------------
+// Snapshot a user's army (+best hero) into tactics.buildSide rows.
+function buildTacticsSide(userId) {
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+  if (!user) throw new GameError(404, 'کاربر یافت نشد.');
+  const bestHero = heroes.list(userId)[0] || null;
+  const hero = bestHero
+    ? { id: bestHero.id, name: bestHero.name, level: bestHero.level, ...heroes.modifier(bestHero) }
+    : null;
+  const rows = barracks.army(userId).map((r) => ({
+    type: r.type,
+    count: r.count,
+    attack: r.attack,
+    defense: r.defense,
+    knowledge_level: r.knowledge_level || 0,
+  }));
+  const side = tactics.buildSide(userId, hero, rows);
+  side.user = { id: user.id, email: user.email, level: user.level };
+  return side;
+}
 
-  const aStrike = resolveStrikes(a, d);
-  const dStrike = resolveStrikes(d, a);
+// ---------------- persistence of live state ----------------
+function saveLiveState(battleId, state, orders, deadlineSet) {
+  const ordersJson =
+    orders === undefined
+      ? null // leave unchanged
+      : JSON.stringify(orders);
+  const deadline = deadlineSet ? Date.now() / 1000 + TACTICS.orderTimerSec : null;
+  db.prepare(
+    `UPDATE battles SET battle_state_json = ?, round = ?,
+       orders_json = COALESCE(?, orders_json),
+       turn_deadline = COALESCE(?, turn_deadline)
+     WHERE id = ?`
+  ).run(
+    JSON.stringify(tactics.serializeState(state)),
+    state.round,
+    ordersJson,
+    deadline,
+    battleId
+  );
+}
 
-  applyKills(d, aStrike.kills);
-  applyKills(a, dStrike.kills);
-
-  // attacker's strikes destroyed defender units
-  for (const type of Object.keys(aStrike.kills)) {
-    events.push({
-      turn,
-      acting: 'attacker',
-      target: 'defender',
-      type,
-      killed: aStrike.kills[type],
-      power: aStrike.strikes[type] ? aStrike.strikes[type].totalPower : 0,
-    });
+function loadLiveBattle(battleId) {
+  const b = db
+    .prepare("SELECT * FROM battles WHERE id = ? AND state = 'running'")
+    .get(battleId);
+  if (!b || !b.battle_state_json) return null;
+  let frozen;
+  try {
+    frozen = JSON.parse(b.battle_state_json);
+  } catch {
+    return null;
   }
-  // defender's strikes destroyed attacker units
-  for (const type of Object.keys(dStrike.kills)) {
-    events.push({
-      turn,
-      acting: 'defender',
-      target: 'attacker',
-      type,
-      killed: dStrike.kills[type],
-      power: dStrike.strikes[type] ? dStrike.strikes[type].totalPower : 0,
-    });
-  }
-  if (!events.length) {
-    events.push({ turn, acting: 'none', target: null, type: null, killed: 0, power: 0, note: 'round of no casualties' });
-  }
-
-  return events;
+  const state = tactics.restoreState(frozen);
+  let orders = { attacker: null, defender: null };
+  try {
+    if (b.orders_json) orders = JSON.parse(b.orders_json);
+  } catch { /* fresh */ }
+  return { row: b, state, orders };
 }
 
-function applyKills(side, kills) {
-  for (const type of Object.keys(kills)) {
-    const u = side.army.find((x) => x.type === type);
-    if (u) u.count = Math.max(0, u.count - kills[type]);
-  }
-}
-
-function sideAlive(side) {
-  return side.army.some((u) => u.count > 0);
-}
-
-// Current combat power of a (possibly damaged) side snapshot.
-function sidePower(side) {
-  return armyPower(side.army, side.hero, side.terrain);
-}
-
-// A side routs once its current power drops below routThreshold of
-// its starting power (DESIGN-v1.md §4.4: "battle ends on rout").
-function sideRouted(side) {
-  const start = side.startPower || side.power || 1;
-  return sidePower(side) < start * BATTLE.routThreshold;
-}
-
-// Full fight simulation. Returns { winner: 'attacker'|'defender'|'draw',
-// turns, log, attacker, defender } where attacker/defender are the
-// mutated side snapshots.
-function simulate(state) {
-  const log = [];
-  let turn = 0;
-  let winner = null;
-
-  // remember starting power for rout checks
-  state.attacker.startPower = state.attacker.power;
-  state.defender.startPower = state.defender.power;
-
-  for (turn = 1; turn <= BATTLE.maxTurns; turn++) {
-    const events = runTurn(state, turn);
-    log.push({ turn, events });
-    state.attacker.army = state.attacker.army.filter((u) => u.count > 0);
-    state.defender.army = state.defender.army.filter((u) => u.count > 0);
-
-    const aAlive = sideAlive(state.attacker);
-    const dAlive = sideAlive(state.defender);
-    if (!aAlive && !dAlive) { winner = 'draw'; break; }
-    if (!dAlive) { winner = 'attacker'; break; }
-    if (!aAlive) { winner = 'defender'; break; }
-
-    // rout check: a side below 25% of starting power flees.
-    // If both rout the same turn, the one with more power left wins.
-    const aRouted = sideRouted(state.attacker);
-    const dRouted = sideRouted(state.defender);
-    if (aRouted && dRouted) {
-      const aPow = sidePower(state.attacker);
-      const dPow = sidePower(state.defender);
-      winner = aPow === dPow ? 'draw' : aPow > dPow ? 'attacker' : 'defender';
-      break;
+// Sweep running battles past their deadline: AI-submits the missing
+// side and resolves. Called opportunistically (cheap indexed query).
+function sweepDeadlines() {
+  if (INTERACTIVE) {
+    const stale = db
+      .prepare(
+        "SELECT id FROM battles WHERE state = 'running' AND turn_deadline IS NOT NULL AND turn_deadline < ?"
+      )
+      .all(Date.now() / 1000);
+    for (const b of stale) {
+      try {
+        aiResolveIfDue(b.id);
+      } catch (err) {
+        console.error('[battles] deadline sweep failed for', b.id, err.message);
+      }
     }
-    if (dRouted) { winner = 'attacker'; break; }
-    if (aRouted) { winner = 'defender'; break; }
   }
-  if (!winner) winner = 'draw'; // maxTurns reached -> draw
-
-  return { winner, turns: turn, log, attacker: state.attacker, defender: state.defender };
 }
 
-// ---------------- rewards ----------------
+// ---------------- in-process AI timers ----------------
+const aiTimers = new Map(); // battleId -> timeout
 
-// Apply battle rewards (gold/XP/knowledge) + ranking + persistence.
-// Returns { battleId, winner, log, rewards } for both sides.
-function finalizeBattle(battleId, attackerId, defenderId, result) {
+function armAiTimer(battleId, missingSide) {
+  clearAiTimer(battleId);
+  const t = setTimeout(() => {
+    aiTimers.delete(battleId);
+    try {
+      aiResolveIfDue(battleId);
+    } catch (err) {
+      console.error('[battles] ai timer failed for', battleId, err.message);
+    }
+  }, TACTICS.orderTimerSec * 1000);
+  t.unref();
+  aiTimers.set(battleId, t);
+}
+
+function clearAiTimer(battleId) {
+  const t = aiTimers.get(battleId);
+  if (t) {
+    clearTimeout(t);
+    aiTimers.delete(battleId);
+  }
+}
+
+// If the given battle is still awaiting orders past its deadline,
+// fill the missing side(s) with AI orders and resolve the round.
+function aiResolveIfDue(battleId) {
+  const live = loadLiveBattle(battleId);
+  if (!live) return null;
+  const { row, state, orders } = live;
+  const due =
+    !INTERACTIVE ||
+    !row.turn_deadline ||
+    row.turn_deadline <= Date.now() / 1000;
+  if (!due) return null;
+
+  if (orders.attacker == null) orders.attacker = tactics.validateOrders(state, 'attacker', tactics.aiOrders(state, 'attacker'));
+  if (orders.defender == null) orders.defender = tactics.validateOrders(state, 'defender', tactics.aiOrders(state, 'defender'));
+  return resolveAndAdvance(row, state, orders);
+}
+
+// Resolve one round from complete orders; finish the battle if over.
+function resolveAndAdvance(row, state, orders) {
+  const { events, outcome } = tactics.resolveRound(state, orders);
+
+  if (outcome.over) {
+    return finalizeBattle(row, state, orders, null, outcome);
+  }
+
+  saveLiveState(row.id, state, { attacker: null, defender: null }, true);
+  emitToBattle(row.id, row.attacker_id, row.defender_id, 'battle:round', {
+    battleId: row.id,
+    round: state.round,
+    events,
+    viewFor: null,
+    views: {
+      attacker: getView(state, 'attacker', false),
+      defender: getView(state, 'defender', false),
+    },
+  });
+  armAiTimer(row.id, 'both');
+  return { resolved: true, events, outcome };
+}
+
+// ---------------- public API ----------------
+
+// Enter battle: matchmake, deploy the tactical battlefield.
+// Interactive mode returns the round-1 view; auto mode fights to the end.
+function enterBattle(userId) {
+  sweepDeadlines();
+  assertNotInBattle(userId);
+
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+  if (!user) throw new GameError(404, 'کاربر یافت نشد.');
+
+  const opp = findOpponent(user.id, user.level);
+  if (!opp) throw new GameError(409, 'هم‌نبرد مناسبی یافت نشد؛ کمی بعد دوباره تلاش کنید.');
+
+  let battleId;
+  let attackerId;
+  let defenderId;
+
+  if (opp.isOpen) {
+    battleId = opp.battleId;
+    attackerId = opp.attackerId;
+    defenderId = userId;
+    db.prepare("UPDATE battles SET defender_id = ?, state = 'running' WHERE id = ?").run(defenderId, battleId);
+  } else {
+    attackerId = userId;
+    defenderId = opp.attackerId;
+    const info = db
+      .prepare("INSERT INTO battles (attacker_id, defender_id, state, created_at) VALUES (?,?,?,?)")
+      .run(attackerId, defenderId, 'running', new Date().toISOString());
+    battleId = info.lastInsertRowid;
+  }
+
+  // Build both tactical sides from LIVE armies.
+  const aSide = buildTacticsSide(attackerId);
+  const dSide = buildTacticsSide(defenderId);
+  const state = tactics.createBattleState(battleId, aSide, dSide);
+
+  // Persist deployment + reset orders/deadline for round 1.
+  db.prepare(
+    `UPDATE battles SET battle_state_json = ?, round = 0,
+       orders_json = ?, turn_deadline = ?
+     WHERE id = ?`
+  ).run(
+    JSON.stringify(tactics.serializeState(state)),
+    JSON.stringify({ attacker: null, defender: null }),
+    Date.now() / 1000 + TACTICS.orderTimerSec,
+    battleId
+  );
+
+  emitToBattle(battleId, attackerId, defenderId, 'battle:start', {
+    battleId,
+    views: {
+      attacker: getView(state, 'attacker', false),
+      defender: getView(state, 'defender', false),
+    },
+  });
+
+  if (!INTERACTIVE) {
+    // AUTO MODE: fight the entire battle right now (AI vs AI) and
+    // answer with the legacy single-shot result payload.
+    let outcome = { over: false };
+    let lastEvents = [];
+    while (!outcome.over && state.round < TACTICS.maxRounds + 1) {
+      const res = tactics.resolveRound(state, {
+        attacker: tactics.validateOrders(state, 'attacker', tactics.aiOrders(state, 'attacker')),
+        defender: tactics.validateOrders(state, 'defender', tactics.aiOrders(state, 'defender')),
+      });
+      outcome = res.outcome;
+      lastEvents = res.events;
+    }
+    return finalizeBattle({ id: battleId, attacker_id: attackerId, defender_id: defenderId }, state, null, null, outcome);
+  }
+
+  armAiTimer(battleId, 'both');
+  const me = userId === attackerId ? 'attacker' : 'defender';
+  return {
+    battleId,
+    mode: 'interactive',
+    side: me,
+    view: getView(state, me, false),
+  };
+}
+
+// Submit this round's orders for one side. Resolves when both are in.
+function submitOrders(userId, battleId, rawOrders) {
+  if (!INTERACTIVE) throw new GameError(400, 'این نبرد در حالت خودکار است.');
+  sweepDeadlines();
+
+  const live = loadLiveBattle(Number(battleId));
+  if (!live) throw new GameError(404, 'نبرد جاری یافت نشد.');
+  const { row, state, orders } = live;
+  if (row.attacker_id !== userId && row.defender_id !== userId) {
+    throw new GameError(403, 'شما در این نبرد شرکت ندارید.');
+  }
+  const side = row.attacker_id === userId ? 'attacker' : 'defender';
+  if (orders[side]) throw new GameError(400, 'دستورات این دور ثبت شده است؛ منتظر حریف باشید.');
+
+  orders[side] = tactics.validateOrders(state, side, rawOrders || {});
+
+  if (orders.attacker == null || orders.defender == null) {
+    // half-in: persist, wait for the opponent (deadline covers AFK)
+    saveLiveState(row.id, state, orders, true);
+    const other = side === 'attacker' ? 'defender' : 'attacker';
+    armAiTimer(row.id, other);
+    emitToBattle(row.id, row.attacker_id, row.defender_id, 'battle:waiting', {
+      battleId: row.id,
+      round: state.round,
+      submitted: { attacker: orders.attacker != null, defender: orders.defender != null },
+    });
+    return { ok: true, waiting: true, view: getView(state, side, true) };
+  }
+
+  return resolveAndAdvance(row, state, orders);
+}
+
+// Live view for a participant (also used after reconnect).
+function getLiveView(userId, battleId) {
+  sweepDeadlines();
+  const b = db.prepare('SELECT * FROM battles WHERE id = ?').get(Number(battleId));
+  if (!b) throw new GameError(404, 'نبرد یافت نشد.');
+  if (b.attacker_id !== userId && b.defender_id !== userId) {
+    throw new GameError(403, 'شما در این نبرد شرکت ندارید.');
+  }
+  if (b.state !== 'running') return battleStatus(battleId, userId);
+  const live = loadLiveBattle(b.id);
+  if (!live) throw new GameError(500, 'وضعیت نبرد خراب است.');
+  const side = b.attacker_id === userId ? 'attacker' : 'defender';
+  const submitted =
+    live.orders[side] != null;
+  return { ok: true, battleId: b.id, state: 'running', side, round: live.state.round, view: getView(live.state, side, submitted) };
+}
+
+// Client-facing projection of the battlefield for one side.
+// Enemy squad morale is fuzzed to a band (fog of morale).
+function getView(state, side, submitted) {
+  const foeSide = side === 'attacker' ? 'defender' : 'attacker';
+  const projSquad = (s, mine) => ({
+    id: s.id,
+    type: s.type,
+    name: s.name,
+    role: s.role,
+    count: Math.max(0, Math.round(s.count)),
+    hp: Math.round(s.hp),
+    maxHp: s.maxHp,
+    x: s.x,
+    y: s.y,
+    mp: s.mp,
+    range: s.range,
+    routed: !!s.routed,
+    ...(mine
+      ? { morale: Math.round(s.morale), unitAtk: Math.round(s.unitAtk * 10) / 10, unitDef: Math.round(s.unitDef * 10) / 10 }
+      : { moraleBand: s.morale > 66 ? 'high' : s.morale > 33 ? 'medium' : 'low' }),
+  });
+  const powFrac = (sd) => tactics.sidePower(state, sd) / Math.max(state[sd].startPower, 1);
+  return {
+    grid: state.grid,
+    terrain: state.terrain,
+    round: state.round,
+    maxRounds: TACTICS.maxRounds,
+    orderTimerSec: TACTICS.orderTimerSec,
+    you: side,
+    submitted: !!submitted,
+    powerFrac: { [side]: +powFrac(side).toFixed(3), [foeSide]: +powFrac(foeSide).toFixed(3) },
+    squads: [
+      ...state[side].squads.map((s) => projSquad(s, true)),
+      ...state[foeSide].squads.map((s) => projSquad(s, false)),
+    ],
+  };
+}
+
+// ---------------- completion ----------------
+
+// Apply the outcome: real casualties, rewards, ranking, persistence.
+// `orders`/`cleared` may be null in auto mode.
+function finalizeBattle(row, state, orders, clearedOrders, outcome) {
+  clearAiTimer(row.id);
+  const battleId = row.id;
+
   const tx = db.transaction(() => {
     const now = new Date().toISOString();
-    const logJson = JSON.stringify({ winner: result.winner, turns: result.turns, log: result.log });
+    const winnerUserId =
+      outcome.winner === 'attacker' ? row.attacker_id : outcome.winner === 'defender' ? row.defender_id : null;
 
-    let winnerUserId = null;
-    if (result.winner === 'attacker') winnerUserId = attackerId;
-    else if (result.winner === 'defender') winnerUserId = defenderId;
+    // ---- survivors per side/type (real losses!) ----
+    const survivorsOf = (sd) => {
+      const map = {};
+      for (const s of state[sd].squads) {
+        if (s.routed) continue; // routed squads abandoned the field
+        map[s.type] = (map[s.type] || 0) + Math.round(s.count);
+      }
+      return map;
+    };
+    const survivors = { attacker: survivorsOf('attacker'), defender: survivorsOf('defender') };
+    const losses = {};
+    for (const sd of ['attacker', 'defender']) {
+      losses[sd] = {};
+      for (const [type, n] of Object.entries(state[sd].startCounts)) {
+        const lost = Math.max(0, n - (survivors[sd][type] || 0));
+        if (lost > 0) losses[sd][type] = lost;
+      }
+    }
+    const applyCasualties = (userId, lossMap) => {
+      for (const [type, lost] of Object.entries(lossMap)) {
+        db.prepare('UPDATE soldiers SET count = MAX(0, count - ?) WHERE user_id = ? AND type = ?').run(lost, userId, type);
+      }
+    };
+    applyCasualties(row.attacker_id, losses.attacker);
+    applyCasualties(row.defender_id, losses.defender);
 
-    db.prepare(
-      `UPDATE battles SET state = 'finished', log_json = ?, winner_id = ?, ended_at = ?
-       WHERE id = ? AND state IN ('open','running')`
-    ).run(logJson, winnerUserId, now, battleId);
-
+    // ---- rewards (identical economy to v1) ----
     const rewards = {};
-    for (const [key, side] of [['attacker', result.attacker], ['defender', result.defender]]) {
-      const uid = key === 'attacker' ? attackerId : defenderId;
-      const won = result.winner === key;
-      const draw = result.winner === 'draw';
+    for (const [key, sd] of [['attacker', 'attacker'], ['defender', 'defender']]) {
+      const uid = key === 'attacker' ? row.attacker_id : row.defender_id;
+      const won = outcome.winner === key;
+      const draw = outcome.winner === 'draw';
       const reward = draw
         ? { gold: BATTLE.reward.drawGold, xp: BATTLE.reward.drawXp, outcome: 'draw' }
         : won
           ? { gold: BATTLE.reward.winGold, xp: BATTLE.reward.winXp, outcome: 'win' }
           : { gold: BATTLE.reward.loseGold, xp: BATTLE.reward.loseXp, outcome: 'lose' };
 
-      // gold + commander XP
       const user = db.prepare('SELECT * FROM users WHERE id = ?').get(uid);
       adjust(uid, { gold: reward.gold, kind: 'battle', note: `نتیجه نبرد: ${reward.outcome}` });
-      const leveled = grantCommanderXp(user, reward.xp);
 
-      // hero XP: the commander's best hero gains the battle XP too
-      // (DESIGN-v1.md §4.3: heroes gain XP from battles; level-ups give diamonds).
+      // commander XP
+      let xp = user.xp + Math.max(0, Math.floor(reward.xp));
+      let level = user.level;
+      let levelUps = 0;
+      while (level < 100 && xp >= level * 500) {
+        xp -= level * 500;
+        level += 1;
+        levelUps += 1;
+      }
+      if (level >= 100) xp = 0;
+      db.prepare('UPDATE users SET xp = ?, level = ? WHERE id = ?').run(xp, level, uid);
+      if (levelUps > 0) {
+        adjust(uid, { gold: levelUps * 200, diamonds: levelUps * 10, kind: 'levelup', note: `ارتقای فرمانده به سطح ${level}` });
+      }
+      const leveled = { xp, level, levelUps };
+
+      // hero XP
       const bestHero = heroes.list(uid)[0] || null;
       const heroGain = bestHero ? heroes.addXp(uid, bestHero.id, reward.xp) : null;
 
-      // knowledge to each surviving soldier group
+      // knowledge only to surviving soldier groups
       const knowledgeGains = [];
-      for (const u of side.army) {
-        if (u.count <= 0) continue;
-        const gain = barracks.addKnowledge(uid, u.type, BATTLE.reward.winKnowledge);
-        knowledgeGains.push(gain);
+      for (const type of Object.keys(survivors[key])) {
+        if ((survivors[key][type] || 0) <= 0) continue;
+        knowledgeGains.push(barracks.addKnowledge(uid, type, BATTLE.reward.winKnowledge));
       }
 
-      // ranking + win/loss counters
       ranking.applyBattleResult(uid, reward.outcome);
-
       rewards[key] = { ...reward, knowledgeGains, leveled, heroGain };
     }
 
-    // mission progress (battle/win missions)
-    missions.refresh(attackerId);
-    missions.refresh(defenderId);
+    missions.refresh(row.attacker_id);
+    missions.refresh(row.defender_id);
 
-    return { rewards };
+    // ---- persist the final record ----
+    const logDoc = buildFinalLog(state, outcome, survivors, losses, rewards);
+    db.prepare(
+      `UPDATE battles SET state = 'finished', log_json = ?, winner_id = ?, ended_at = ?,
+         battle_state_json = NULL, orders_json = NULL, turn_deadline = NULL
+       WHERE id = ?`
+    ).run(JSON.stringify(logDoc), winnerUserId, now, battleId);
+
+    const result = {
+      battleId,
+      winner: outcome.winner,
+      reason: outcome.reason,
+      turns: state.round,
+      log: logDoc.log,
+      attacker: legacySidePayload(state, 'attacker', survivors.attacker, row.attacker_id),
+      defender: legacySidePayload(state, 'defender', survivors.defender, row.defender_id),
+      rewards,
+      ended_at: now,
+      casualties: losses,
+    };
+
+    // Emit AFTER commit so status queries never race the event.
+    setImmediate(() =>
+      emitToBattle(battleId, row.attacker_id, row.defender_id, 'battle:finished', result)
+    );
+    return result;
   });
   return tx();
 }
 
-// Commander XP + level-ups (mirrors missions.claim logic).
-function grantCommanderXp(user, amount) {
-  let xp = user.xp + Math.max(0, Math.floor(amount));
-  let level = user.level;
-  let levelUps = 0;
-  while (level < PLAYER.maxLevel && xp >= level * PLAYER.xpPerLevel) {
-    xp -= level * PLAYER.xpPerLevel;
-    level += 1;
-    levelUps += 1;
-  }
-  if (level >= PLAYER.maxLevel) xp = 0;
-  db.prepare('UPDATE users SET xp = ?, level = ? WHERE id = ?').run(xp, level, user.id);
-  if (levelUps > 0) {
-    adjust(user.id, {
-      gold: levelUps * PLAYER.levelUpGold,
-      diamonds: levelUps * PLAYER.levelUpDiamonds,
-      kind: 'levelup',
-      note: `ارتقای فرمانده به سطح ${level}`,
-    });
-  }
-  return { xp, level, levelUps };
+// Final persisted document (battles.log_json). NOTE: `.log` must stay a
+// non-empty array of turn objects (tests + history UI rely on it).
+function buildFinalLog(state, outcome, survivors, losses, rewards) {
+  return {
+    version: 2,
+    winner: outcome.winner,
+    reason: outcome.reason,
+    rounds: state.round,
+    terrain: state.terrain,
+    initial: {
+      attacker: { userId: state.attacker.userId, hero: state.attacker.hero, startCounts: state.attacker.startCounts, startPower: state.attacker.startPower },
+      defender: { userId: state.defender.userId, hero: state.defender.hero, startCounts: state.defender.startCounts, startPower: state.defender.startPower },
+    },
+    log: state.log && state.log.length ? state.log : [{ round: 0, events: [{ kind: 'end', winner: outcome.winner, reason: outcome.reason }] }],
+    final: {
+      attacker: { survivors: survivors.attacker, losses: losses.attacker },
+      defender: { survivors: survivors.defender, losses: losses.defender },
+    },
+    rewards: {
+      attacker: rewards.attacker ? { outcome: rewards.attacker.outcome, gold: rewards.attacker.gold, xp: rewards.attacker.xp } : null,
+      defender: rewards.defender ? { outcome: rewards.defender.outcome, gold: rewards.defender.gold, xp: rewards.defender.xp } : null,
+    },
+  };
 }
 
-// Expire open challenges nobody joined within the TTL window.
-// Mark them finished with no winner (never fought).
+// Legacy-shaped side payload (old UI + tests read hero/power/army).
+function legacySidePayload(state, sd, survivors, userId) {
+  const user = db.prepare('SELECT email, level FROM users WHERE id = ?').get(userId);
+  const armyRows = Object.entries(survivors)
+    .filter(([, n]) => n > 0)
+    .map(([type, count]) => ({
+      type,
+      name: SOLDIERS[type].name,
+      count,
+      attack: state[sd].squads.find((s) => s.type === type)?.unitAtk ?? SOLDIERS[type].attack,
+      defense: state[sd].squads.find((s) => s.type === type)?.unitDef ?? SOLDIERS[type].defense,
+    }));
+  return {
+    user_id: userId,
+    email: user ? user.email : null,
+    hero: state[sd].hero,
+    power: Math.round(tactics.sidePower(state, sd)),
+    army: armyRows,
+    terrain: state.terrain[state[sd].squads[0]?.y ?? 0]?.[state[sd].squads[0]?.x ?? 0] || 'plain',
+  };
+}
+
+// ---------------- challenge opening ----------------
+function openChallenge(userId) {
+  assertNotInBattle(userId);
+  const info = db
+    .prepare("INSERT INTO battles (attacker_id, defender_id, state, created_at) VALUES (?,?,?,?)")
+    .run(userId, userId, 'open', new Date().toISOString());
+  return db.prepare('SELECT * FROM battles WHERE id = ?').get(info.lastInsertRowid);
+}
+
+// ---------------- status/history (compat) ----------------
+function battleStatus(battleId, requesterId) {
+  const b = db.prepare('SELECT * FROM battles WHERE id = ?').get(Number(battleId));
+  if (!b) throw new GameError(404, 'نبرد یافت نشد.');
+  if (b.attacker_id !== requesterId && b.defender_id !== requesterId) {
+    throw new GameError(403, 'شما در این نبرد شرکت ندارید.');
+  }
+  let parsed = null;
+  if (b.log_json) {
+    try { parsed = JSON.parse(b.log_json); } catch { /* corrupt log */ }
+  }
+  return { ...b, log: parsed };
+}
+
+function battleHistory(userId, limit = 10) {
+  return db
+    .prepare(
+      `SELECT id, attacker_id, defender_id, state, winner_id, created_at, ended_at, round
+       FROM battles
+       WHERE attacker_id = ? OR defender_id = ?
+       ORDER BY id DESC LIMIT ?`
+    )
+    .all(userId, userId, Math.min(Math.max(1, Number(limit) || 10), 50));
+}
+
 function expireStaleOpens() {
   const stale = db
     .prepare(
@@ -386,145 +633,14 @@ function expireStaleOpens() {
   return stale.length;
 }
 
-// ---------------- public API ----------------
-
-// Enter battle: matchmake, snapshot, run the fight, persist, emit.
-function enterBattle(userId) {
-  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
-  if (!user) throw new GameError(404, 'کاربر یافت نشد.');
-
-  const inBattle = db
-    .prepare("SELECT id FROM battles WHERE (attacker_id = ? OR defender_id = ?) AND state IN ('open','running')")
-    .get(userId, userId);
-  if (inBattle) throw new GameError(400, 'شما هم‌اکنون در یک نبرد هستید.');
-
-  const opp = findOpponent(user.id, user.level);
-  if (!opp) throw new GameError(409, 'هم‌نبرد مناسبی یافت نشد؛ کمی بعد دوباره تلاش کنید.');
-
-  let battleId;
-  let attackerId;
-  let defenderId;
-
-  if (opp.isOpen) {
-    battleId = opp.battleId;
-    attackerId = opp.attackerId;
-    defenderId = userId; // user joins as defender of an open challenge
-    // Claim the open challenge: set real defender, flip to running.
-    db.prepare("UPDATE battles SET defender_id = ?, state = 'running' WHERE id = ?").run(defenderId, battleId);
-  } else {
-    attackerId = userId;
-    defenderId = opp.attackerId;
-    const info = db
-      .prepare("INSERT INTO battles (attacker_id, defender_id, state, created_at) VALUES (?,?,?,?)")
-      .run(attackerId, defenderId, 'running', new Date().toISOString());
-    battleId = info.lastInsertRowid;
-  }
-
-  // Snapshot both sides AFTER the battle row exists (open battles were
-  // snapshotted by their challenger, so re-snapshot from live state).
-  // One terrain is rolled and shared by both sides.
-  const terrain = pickTerrain();
-  const aSide = snapshotSide(attackerId, terrain);
-  const dSide = snapshotSide(defenderId, terrain);
-  const state = { attacker: aSide, defender: dSide };
-
-  const result = simulate(state);
-  const { rewards } = finalizeBattle(battleId, attackerId, defenderId, result);
-
-  const log = {
-    battleId,
-    attacker: aSide,
-    defender: dSide,
-    turns: result.turns,
-    winner: result.winner,
-    log: result.log,
-    rewards,
-    ended_at: new Date().toISOString(),
-  };
-
-  // live socket update (both players are in the battle room + personal room)
-  emitToBattle(battleId, attackerId, defenderId, 'battle:finished', serialize(log));
-
-  return { battleId, ...log };
-}
-
-// Open a challenge: matchmaking finds an opponent LATER (state='open').
-// The challenger waits; the next enterBattle picks them up.
-function openChallenge(userId) {
-  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
-  if (!user) throw new GameError(404, 'کاربر یافت نشد.');
-  const inBattle = db
-    .prepare("SELECT id FROM battles WHERE (attacker_id = ? OR defender_id = ?) AND state IN ('open','running')")
-    .get(userId, userId);
-  if (inBattle) throw new GameError(400, 'شما هم‌اکنون در یک نبرد هستید.');
-
-  const info = db
-    .prepare("INSERT INTO battles (attacker_id, defender_id, state, created_at) VALUES (?,?,?,?)")
-    .run(userId, userId, 'open', new Date().toISOString());
-  return db.prepare('SELECT * FROM battles WHERE id = ?').get(info.lastInsertRowid);
-}
-
-// Public battle status (log + sides + winner + rewards).
-function battleStatus(battleId, requesterId) {
-  const b = db.prepare('SELECT * FROM battles WHERE id = ?').get(battleId);
-  if (!b) throw new GameError(404, 'نبرد یافت نشد.');
-  if (b.attacker_id !== requesterId && b.defender_id !== requesterId) {
-    throw new GameError(403, 'شما در این نبرد شرکت ندارید.');
-  }
-  let parsed = null;
-  if (b.log_json) {
-    try { parsed = JSON.parse(b.log_json); } catch { /* corrupt log */ }
-  }
-  // Keep log_json (raw persisted form) AND the parsed `log` object.
-  return { ...b, log: parsed };
-}
-
-// Recent battles involving a user (dashboard history).
-function battleHistory(userId, limit = 10) {
-  return db
-    .prepare(
-      `SELECT id, attacker_id, defender_id, state, winner_id, created_at, ended_at
-       FROM battles
-       WHERE attacker_id = ? OR defender_id = ?
-       ORDER BY id DESC LIMIT ?`
-    )
-    .all(userId, userId, Math.min(Math.max(1, Number(limit) || 10), 50));
-}
-
-// Serialize a finished battle for socket/API consumers.
-function serialize(battle) {
-  return {
-    battleId: battle.battleId,
-    winner: battle.winner,
-    turns: battle.turns,
-    attacker: {
-      user_id: battle.attacker.user_id,
-      hero: battle.attacker.hero,
-      terrain: battle.attacker.terrain,
-      power: battle.attacker.power,
-      army: battle.attacker.army,
-    },
-    defender: {
-      user_id: battle.defender.user_id,
-      hero: battle.defender.hero,
-      terrain: battle.defender.terrain,
-      power: battle.defender.power,
-      army: battle.defender.army,
-    },
-    log: battle.log,
-    rewards: battle.rewards,
-    ended_at: battle.ended_at,
-  };
-}
-
 module.exports = {
   setIo,
   enterBattle,
+  submitOrders,
+  getLiveView,
   openChallenge,
   battleStatus,
   battleHistory,
   expireStaleOpens,
-  armyPower,
-  unitPower,
-  snapshotSide,
+  sweepDeadlines,
 };

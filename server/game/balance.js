@@ -118,6 +118,58 @@ const BATTLE = {
   },
 };
 
+// ----- Tactical battle system (interactive grid combat) ---------
+// All knobs for tactics.js live here.
+const TACTICS = {
+  gridW: 9,
+  gridH: 7,
+  squadSize: 25,        // soldiers per squad
+  maxSquadsPerSide: 8,  // army splits into at most this many squads
+  maxRounds: 20,        // hard round cap -> points decision/draw
+  orderTimerSec: Number(process.env.GORZ_ORDER_TIMER_SEC) || 45, // per-round order window before AI kicks in
+
+  // terrain generation
+  forestChance: 0.14,   // forest tile: +def, blocks cavalry charge
+  hillChance: 0.10,     // hill tile: +atk for whoever stands on it
+
+  // terrain effects
+  forestDefBonus: 0.35,   // +35% defense in forest
+  hillAtkBonus: 0.15,     // +15% attack from a hill
+  holdDefBonus: 0.30,     // 'hold' stance: +30% defense, no movement
+  assaultAtkBonus: 0.20,  // 'assault' stance: +20% attack...
+  assaultDefPenalty: 0.20,// ...but -20% defense
+  chargeMult: 1.6,        // cavalry charge after moving 2+ cells
+  focusBonus: 0.2,        // +20% volley when archers focus-fire
+  rangedAdjacentMult: 0.5,// archers shoot at half power when engaged
+  knowledgePerLevel: 0.1, // +10% atk/def per soldier knowledge level
+
+  // combat math: kills = atkScore*K/(defScore+C), jittered ±15%
+  // K tuned so even matchups trade ~10-15% strength per round -> fights
+  // last a satisfying 6-12 rounds where orders decide the outcome.
+  killK: 2.6,
+  killC: 40,
+  counterMelee: 0.5,       // defender counters at 50% power
+  counterAdjacentRanged: 0.3,
+
+  // morale
+  moraleHitPerFraction: 120, // losing 100% of squad = 120 morale dmg
+  routMoraleThreshold: 30,   // below this, squads risk routing each round
+  routChancePerPoint: 0.02,  // (threshold - morale) * 0.02 chance/round
+
+  // outcome
+  routThreshold: 0.35,  // side below 35% starting power collapses
+  decisiveRatio: 1.25,  // round-cap: winner needs >= 1.25x loser's power
+
+  // unit battlefield stats (per-soldier HP + movement/range/role)
+  units: {
+    swordsman: { unitHp: 30, mp: 1, range: 1, role: 'melee' },
+    archer: { unitHp: 18, mp: 1, range: 3, role: 'ranged' },
+    cavalry: { unitHp: 26, mp: 2, range: 1, role: 'melee' },
+  },
+
+  recruitCostGold: 20, // gold to add one soldier via /battle/recruit
+};
+
 // ----- Market ---------------------------------------------------
 const MARKET = {
   feePercent: 5, // 5% transaction fee
@@ -144,6 +196,7 @@ module.exports = {
   HERO,
   PLAYER,
   BATTLE,
+  TACTICS,
   MARKET,
   MISSIONS,
   RAFFLE,

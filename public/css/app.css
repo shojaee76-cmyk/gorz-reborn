@@ -940,3 +940,137 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 
 }
 .chip.gold { color: var(--gold); border-color: rgba(232, 193, 90, 0.3); background: rgba(232, 193, 90, 0.07); }
 .chip.diamond { color: var(--diamond); border-color: rgba(127, 212, 232, 0.3); background: rgba(127, 212, 232, 0.07); }
+
+/* ============================================================
+   Tactical battle (v2) — grid board, order planning, replay
+   ============================================================ */
+.tac-wrap { display: flex; flex-direction: column; gap: 14px; }
+.tac-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 18px; flex-wrap: wrap;
+  background: linear-gradient(180deg, var(--bg-panel), var(--bg-raised));
+  border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 18px;
+}
+.tac-round { color: var(--text-dim); font-size: 13.5px; }
+.tac-round b { color: var(--accent-strong); font-size: 15px; }
+.tac-powers { display: flex; gap: 22px; align-items: center; flex: 1; justify-content: center; min-width: 260px; }
+.tac-power { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-dim); }
+.tac-power b { color: var(--text); font-size: 12.5px; }
+.tac-power-track { width: 130px; height: 8px; background: var(--bg-deep); border-radius: 99px; overflow: hidden; border: 1px solid var(--line-soft); }
+.tac-power-fill { height: 100%; border-radius: 99px; transition: width .5s ease; }
+.tac-power-fill.you { background: linear-gradient(90deg, var(--accent), var(--accent-strong)); }
+.tac-power-fill.foe { background: linear-gradient(90deg, #b0443a, var(--bad)); }
+.tac-timer { color: var(--warn); font-size: 13.5px; min-width: 90px; text-align: left; }
+
+.tac-board-frame {
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px;
+  overflow-x: auto;
+}
+.tac-board {
+  --cell: 58px;
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 9), var(--cell));
+  grid-auto-rows: var(--cell);
+  gap: 3px;
+  direction: ltr; /* battlefield coordinates read LTR even in RTL UI */
+  position: relative;
+  width: max-content;
+  margin: 0 auto;
+}
+@media (max-width: 640px) { .tac-board { --cell: 40px; } }
+.tac-cell {
+  border-radius: 7px;
+  position: relative;
+  cursor: pointer;
+  transition: box-shadow .15s ease, filter .15s ease;
+}
+.terr-plain { background: #232830; }
+.terr-forest { background: #1d2b22; box-shadow: inset 0 0 0 1px rgba(111,207,151,.16); }
+.terr-hill { background: #2e2a23; box-shadow: inset 0 0 0 1px rgba(232,193,90,.16); }
+.tac-cell.in-range::after {
+  content: ''; position: absolute; inset: 3px;
+  border: 1px dashed rgba(224,138,60,.35); border-radius: 6px;
+}
+
+/* squad chips */
+.tac-chip {
+  --x: 0; --vy: 0;
+  position: relative;
+  z-index: 2;
+  transform: translate(calc(var(--x) * (var(--cell) + 3px)), calc(var(--vy) * (var(--cell) + 3px)));
+  width: var(--cell); height: var(--cell);
+  margin-top: calc(-1 * (var(--grid-h) * (var(--cell) + 3px)));
+  display: none;
+  pointer-events: auto;
+  cursor: pointer;
+}
+.tac-board .tac-chip {
+  /* overlay chips on top of the grid using absolute positioning */
+  position: absolute;
+  top: 0; left: 0;
+  margin: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 1px;
+  border-radius: 9px;
+  border: 1.5px solid var(--line);
+  transition: transform .32s cubic-bezier(.22,.9,.36,1), box-shadow .2s ease, opacity .3s ease;
+}
+.tac-chip.side-mine { background: linear-gradient(180deg, #33302a, #26231e); border-color: var(--accent-line); box-shadow: 0 3px 10px rgba(0,0,0,.35); }
+.tac-chip.side-foe { background: linear-gradient(180deg, #2a2226, #20191c); border-color: rgba(224,108,95,.45); }
+.tac-chip.selected { border-color: var(--accent-strong); box-shadow: 0 0 0 2px var(--accent-soft), 0 4px 14px rgba(0,0,0,.4); }
+.tac-chip.focused { border-color: var(--bad); box-shadow: 0 0 0 2px var(--bad-soft); }
+.tac-chip-icon { font-size: 17px; line-height: 1; filter: saturate(.85); }
+.tac-chip-count { font-size: 11.5px; font-weight: 600; color: var(--text); }
+.side-mine .tac-morale { display:block; width: 70%; height: 3px; background: var(--bg-deep); border-radius: 99px; overflow: hidden; }
+.side-mine .tac-morale b { display: block; height: 100%; background: var(--good); border-radius: 99px; transition: width .4s ease; }
+.tac-chip.routed { opacity: .38; filter: grayscale(.7); }
+.tac-rout-mark { position: absolute; inset-inline-start: -4px; top: -7px; font-size: 9px; background: var(--bg-deep); color: var(--warn); border: 1px solid rgba(232,193,90,.4); padding: 0 5px; border-radius: 99px; }
+.band-low { border-style: dashed; }
+
+/* replay fx */
+.tac-chip.attacking { animation: tac-lunge .38s ease; }
+@keyframes tac-lunge { 30% { transform: translate(calc(var(--x) * (var(--cell) + 3px)), calc(var(--vy) * (var(--cell) + 3px))) scale(1.12); } }
+.tac-chip.hit { animation: tac-shake .42s ease; }
+@keyframes tac-shake { 20% { filter: brightness(1.7); } 50% { transform: translate(calc(var(--x) * (var(--cell) + 3px)), calc(var(--vy) * (var(--cell) + 3px))) translateX(-3px); } }
+.tac-float {
+  position: absolute; top: -6px; inset-inline-end: -6px;
+  background: var(--bad); color: #fff; font-size: 10.5px; font-weight: 700;
+  padding: 1px 6px; border-radius: 99px; pointer-events: none;
+  animation: tac-rise .9s ease forwards; white-space: nowrap;
+}
+@keyframes tac-rise { to { transform: translateY(-20px); opacity: 0; } }
+
+/* order panel */
+.tac-panel {
+  background: linear-gradient(180deg, var(--bg-panel), var(--bg-raised));
+  border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.tac-hint { font-size: 13.5px; color: var(--text-dim); min-height: 22px; }
+.tac-controls { min-height: 34px; }
+.tac-ctrl-head { display: flex; justify-content: space-between; align-items: center; font-size: 14px; margin-bottom: 8px; }
+.tac-stances { display: flex; gap: 8px; flex-wrap: wrap; }
+.tac-stance {
+  background: var(--bg-deep); border: 1px solid var(--line); color: var(--text-dim);
+  border-radius: 99px; padding: 5px 16px; cursor: pointer; font-size: 13px; transition: all .15s ease;
+}
+.tac-stance:hover { border-color: var(--accent-line); color: var(--text); }
+.tac-stance.on { background: var(--accent-soft); border-color: var(--accent-strong); color: var(--accent-strong); font-weight: 600; }
+.tac-submit-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tac-ready { color: var(--good); font-size: 13.5px; }
+.btn-sm { padding: 6px 14px; font-size: 12.5px; }
+
+/* finished battle extras */
+.tac-final-banner { font-size: 26px; font-weight: 700; margin-bottom: 6px; }
+.battle-result.win .tac-final-banner { color: var(--good); }
+.battle-result.lose .tac-final-banner { color: var(--bad); }
+.battle-result.draw .tac-final-banner { color: var(--warn); }
+.tac-reason { color: var(--text-dim); font-size: 13.5px; margin-bottom: 18px; }
+.tac-rewards { margin-bottom: 16px; }
+.tac-rewards h4 { font-size: 13.5px; color: var(--text-dim); margin-bottom: 4px; }
+.tac-log-details summary { cursor: pointer; color: var(--accent-strong); font-size: 13.5px; }
+.tac-log-details { margin-top: 6px; }
+.battle-actions { display: flex; gap: 10px; }

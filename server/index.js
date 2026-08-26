@@ -94,6 +94,34 @@ io.on('connection', (socket) => {
       if (typeof ack === 'function') ack({ ok: false, error: err.faMessage || err.message || 'خطای نبرد.' });
     }
   });
+
+  // Joining a running battle also delivers the caller's live view.
+  // (battle:join above handles room membership; this adds the view.)
+  socket.on('battle:view', (data, ack) => {
+    try {
+      if (!userId) throw new Error('unauthorized');
+      const battleId = Number((data && data.battleId) || NaN);
+      const result = battles.getLiveView(userId, battleId);
+      if (typeof ack === 'function') ack({ ok: true, ...result });
+    } catch (err) {
+      if (typeof ack === 'function') ack({ ok: false, error: err.faMessage || err.message || 'خطا.' });
+    }
+  });
+
+  // Submit tactical orders over the socket (same contract as POST /api/battle/orders/:id).
+  socket.on('battle:orders', (data, ack) => {
+    try {
+      if (!userId) throw new Error('unauthorized');
+      const result = battles.submitOrders(
+        userId,
+        (data && data.battleId) || NaN,
+        (data && data.orders) || {}
+      );
+      if (typeof ack === 'function') ack({ ok: true, ...result });
+    } catch (err) {
+      if (typeof ack === 'function') ack({ ok: false, error: err.faMessage || err.message || 'خطا.' });
+    }
+  });
 });
 
 // Expire stale open challenges on a timer (they clog matchmaking).
@@ -105,6 +133,16 @@ setInterval(() => {
     console.error('[battles] open-challenge cleanup failed:', err.message);
   }
 }, OPEN_CLEANUP_MS).unref();
+
+// Interactive battles: resolve rounds whose order window expired while
+// nobody was looking (covers AFK commanders + server restarts).
+setInterval(() => {
+  try {
+    battles.sweepDeadlines();
+  } catch (err) {
+    console.error('[battles] deadline sweep failed:', err.message);
+  }
+}, 15 * 1000).unref();
 
 server.listen(PORT, () => {
   console.log(`گرز نو (Gorz Reborn) running on http://localhost:${PORT}`);

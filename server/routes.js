@@ -170,6 +170,34 @@ router.get('/battle/history', requireAuth, (req, res) => {
   const limit = parseInt(req.query.limit, 10) || 10;
   res.json({ ok: true, battles: battles.battleHistory(req.user.id, limit) });
 });
+
+// Submit this round's tactical orders (move/focus/stance per squad).
+router.post('/battle/orders/:id', requireAuth, wrap((req, res) => {
+  const result = battles.submitOrders(req.user.id, req.params.id, (req.body && req.body.orders) || {});
+  res.json({ ok: true, ...result });
+}));
+
+// Live battlefield view (reconnect-safe).
+router.get('/battle/live/:id', requireAuth, wrap((req, res) => {
+  const result = battles.getLiveView(req.user.id, req.params.id);
+  res.json({ ok: true, ...result });
+}));
+
+// Any running battle this commander belongs to (+ their side).
+router.get('/battle/current', requireAuth, wrap((req, res) => {
+  const row = db
+    .prepare(
+      "SELECT * FROM battles WHERE state IN ('open','running') AND (attacker_id = ? OR defender_id = ?) ORDER BY id DESC LIMIT 1"
+    )
+    .get(req.user.id, req.user.id);
+  if (!row) return res.json({ ok: true, battle: null });
+  const side = row.attacker_id === req.user.id ? 'attacker' : 'defender';
+  if (row.state === 'running') {
+    const result = battles.getLiveView(req.user.id, row.id);
+    return res.json({ ok: true, battle: { id: row.id, state: row.state }, side, view: result.view || null });
+  }
+  res.json({ ok: true, battle: { id: row.id, state: row.state }, side, view: null });
+}));
 // BATTLE-ROUTES-END
 
 // ---------------- health ----------------
