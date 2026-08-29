@@ -65,6 +65,8 @@ Derived from `brain.js` heuristics + observed population convergence across spar
 6. **`keepCapture` ≤ 0.3.** brain.js diverts all squads to unclaimed keeps when `> 0.55`. Champions set 0.2. Forest Archer (0.85) traded army for keeps and died.
 7. **`focusFire` and `rangedEngage` are filler** — set to 0.5 to keep them inactive. Both only trigger above/below 0.55 thresholds.
 
+8. **Homogeneous populations produce decisive matches, not draws.** When most of the population converges to the same genome, mirror matches don't grind to round 22 — the cavalry race resolves in <20 rounds. Long-evo peaked at 83.2% decisive rate at gen 11 when the entire top-10 was identical Genghis-Wolf; gen 12 settled to 78.4%. **Decisive rate is a population-homogeneity signal**, not necessarily a strength signal.
+
 **Counter-strategies (verified 2026-08-29):**
 - **Pheidippides Skirmisher** (0.05/0.85/0.10, defense 0.85, keepCapture 0.99) beats Berserker-class melee 2-0-3 (3 decisive draws in 22 rounds).
 - **Parthian Skyrtos** (0.45/0.35/0.20, target cavalry_first, keepCapture 0.85) beats Genghis Wolf 3-0-0 — all three wins were `army routed` in 19-21 rounds. The swordsman line absorbs the first charge, archers kite + focus-fire cavalry, keeps drag the duel past the charge window.
