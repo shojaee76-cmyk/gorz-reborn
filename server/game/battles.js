@@ -35,6 +35,39 @@ const tactics = require('./tactics');
 
 const INTERACTIVE = (process.env.GORZ_BATTLE_MODE || 'interactive') !== 'auto';
 
+// ---------------- single-player (vs AI) support ----------------
+// When no human opponent is available, a solo commander can still play:
+// the other side is filled by an AI commander. The AI lives as a dummy
+// user row (id = -1) so battles.defender_id's FK is satisfied, and its
+// army is built directly by buildAiSide() instead of read from barracks.
+const AI_USER_ID = -1;
+function ensureAiUser() {
+  const exists = db.prepare('SELECT id FROM users WHERE id = ?').get(AI_USER_ID);
+  if (!exists) {
+    db.prepare('INSERT INTO users (id, email, level, password_hash, created_at) VALUES (?,?,?,?,?)')
+      .run(AI_USER_ID, 'ai@bot.local', 1, '', new Date().toISOString());
+  }
+}
+// Build an AI tactical side scaled to the human commander's level, so a
+// solo fight is a fair scrap, not a cannon fodder stroll.
+function buildAiSide(level) {
+  const lvl = Math.max(1, level || 1);
+  const scale = 1 + (lvl - 1) * 0.15; // ~15% stronger per level
+  const rows = [
+    { type: 'swordsman', count: Math.round(6 * scale), attack: 18, defense: 14, knowledge_level: 0 },
+    { type: 'archer',     count: Math.round(4 * scale), attack: 22, defense: 10, knowledge_level: 0 },
+    { type: 'cavalry',    count: Math.round(2 * scale), attack: 26, defense: 16, knowledge_level: 0 },
+  ];
+  const hero = { id: 0, name: 'واشر', level: lvl, ...heroes.modifier({ level: lvl }) };
+  const side = tactics.buildSide(AI_USER_ID, hero, rows);
+  side.user = { id: AI_USER_ID, email: 'ai@bot.local', level: lvl };
+  return side;
+}
+function isAiSide(row, side) {
+  const id = side === 'attacker' ? row.attacker_id : row.defender_id;
+  return id === AI_USER_ID;
+}
+
 // Socket.IO instance, attached by server/index.js (avoid require cycle).
 let io = null;
 function setIo(instance) {
@@ -263,13 +296,20 @@ function enterBattle(userId) {
   if (!user) throw new GameError(404, 'کاربر یافت نشد.');
 
   const opp = findOpponent(user.id, user.level);
-  if (!opp) throw new GameError(409, 'هم‌نبرد مناسبی یافت نشد؛ کمی بعد دوباره تلاش کنید.');
-
   let battleId;
   let attackerId;
   let defenderId;
-
-  if (opp.isOpen) {
+  if (!opp) {
+    // No human commander available -> spin up an AI opponent so a single
+    // player can still play the battle end-to-end (vs AI).
+    ensureAiUser();
+    attackerId = user.id;
+    defenderId = AI_USER_ID;
+    const info = db
+      .prepare("INSERT INTO battles (attacker_id, defender_id, state, created_at) VALUES (?,?,?,?)")
+      .run(attackerId, defenderId, 'running', new Date().toISOString());
+    battleId = info.lastInsertRowid;
+  } else if (opp.isOpen) {
     battleId = opp.battleId;
     attackerId = opp.attackerId;
     defenderId = userId;
@@ -283,10 +323,12 @@ function enterBattle(userId) {
     battleId = info.lastInsertRowid;
   }
 
-  // Build both tactical sides from LIVE armies.
+  // Build both tactical sides from LIVE armies. (AI side is synthetic.)
   const aSide = buildTacticsSide(attackerId);
-  const dSide = buildTacticsSide(defenderId);
+  const dSide = defenderId === AI_USER_ID ? buildAiSide(user.level) : buildTacticsSide(defenderId);
   const state = tactics.createBattleState(battleId, aSide, dSide);
+
+  const vsAi = isAiSide({ attacker_id: attackerId, defender_id: defenderId }, 'defender');
 
   // Persist deployment + reset orders/deadline for round 1.
   db.prepare(
@@ -296,16 +338,19 @@ function enterBattle(userId) {
   ).run(
     JSON.stringify(tactics.serializeState(state)),
     JSON.stringify({ attacker: null, defender: null }),
-    Date.now() / 1000 + TACTICS.orderTimerSec,
+    vsAi ? null : Date.now() / 1000 + TACTICS.orderTimerSec, // vs AI: human moves first, deadline after their submit
     battleId
   );
 
+  // Expose vsAi on each side's view so the SPA knows it's single-player.
+  const aView = getView(state, 'attacker', false);
+  const dView = getView(state, 'defender', false);
+  aView.vsAi = vsAi;
+  dView.vsAi = vsAi;
   emitToBattle(battleId, attackerId, defenderId, 'battle:start', {
     battleId,
-    views: {
-      attacker: getView(state, 'attacker', false),
-      defender: getView(state, 'defender', false),
-    },
+    vsAi,
+    views: { attacker: aView, defender: dView },
   });
 
   if (!INTERACTIVE) {
@@ -326,11 +371,14 @@ function enterBattle(userId) {
 
   armAiTimer(battleId, 'both');
   const me = userId === attackerId ? 'attacker' : 'defender';
+  const retView = getView(state, me, false);
+  retView.vsAi = vsAi;
   return {
     battleId,
     mode: 'interactive',
     side: me,
-    view: getView(state, me, false),
+    vsAi,
+    view: retView,
   };
 }
 
@@ -350,20 +398,46 @@ function submitOrders(userId, battleId, rawOrders) {
 
   orders[side] = tactics.validateOrders(state, side, rawOrders || {});
 
-  if (orders.attacker == null || orders.defender == null) {
+  // vs AI: the other side is the AI commander — auto-fill its orders and
+  // resolve the round immediately, so a single human submission plays a
+  // full turn (human orders -> AI orders -> resolve -> next round).
+  const other = side === 'attacker' ? 'defender' : 'attacker';
+  const otherIsAi = isAiSide({ attacker_id: row.attacker_id, defender_id: row.defender_id }, other);
+  if (!otherIsAi && (orders.attacker == null || orders.defender == null)) {
     // half-in: persist, wait for the opponent (deadline covers AFK)
     saveLiveState(row.id, state, orders, true);
-    const other = side === 'attacker' ? 'defender' : 'attacker';
     armAiTimer(row.id, other);
     emitToBattle(row.id, row.attacker_id, row.defender_id, 'battle:waiting', {
       battleId: row.id,
       round: state.round,
       submitted: { attacker: orders.attacker != null, defender: orders.defender != null },
     });
-    return { ok: true, waiting: true, view: getView(state, side, true) };
+    return { ok: true, waiting: true, vsAi: false, view: getView(state, side, true) };
   }
 
-  return resolveAndAdvance(row, state, orders);
+  // Both sides have orders (AI auto-filled if needed). Resolve the round.
+  if (otherIsAi && orders[other] == null) {
+    orders[other] = tactics.validateOrders(state, other, tactics.aiOrders(state, other));
+  }
+  const result = resolveAndAdvance(row, state, orders);
+  const me = userId === row.attacker_id ? 'attacker' : 'defender';
+  const retView = getView(state, me, false);
+  retView.vsAi = true;
+  const out = {
+    ok: true,
+    vsAi: true,
+    waiting: false,
+    resolved: !!result && (result.resolved === true),
+    ...result, // {resolved,events,outcome} (mid-battle) OR finalizeBattle payload {winner,...}
+    view: retView,
+  };
+  // If the battle just ended, surface the win/loss outcome for the SPA.
+  if (result && result.winner !== undefined) {
+    out.myOutcome = result.winner === me ? 'win'
+      : result.winner === (me === 'attacker' ? 'defender' : 'attacker') ? 'lose'
+      : 'draw';
+  }
+  return out;
 }
 
 // Live view for a participant (also used after reconnect).
@@ -380,7 +454,9 @@ function getLiveView(userId, battleId) {
   const side = b.attacker_id === userId ? 'attacker' : 'defender';
   const submitted =
     live.orders[side] != null;
-  return { ok: true, battleId: b.id, state: 'running', side, round: live.state.round, view: getView(live.state, side, submitted) };
+  const view = getView(live.state, side, submitted);
+  view.vsAi = isAiSide({ attacker_id: b.attacker_id, defender_id: b.defender_id }, view.you === 'attacker' ? 'defender' : 'attacker');
+  return { ok: true, battleId: b.id, state: 'running', side, round: live.state.round, view };
 }
 
 // Client-facing projection of the battlefield for one side.
@@ -400,14 +476,19 @@ function getView(state, side, submitted) {
     mp: s.mp,
     range: s.range,
     routed: !!s.routed,
+    onKeep: !!s.onKeep,
     ...(mine
       ? { morale: Math.round(s.morale), unitAtk: Math.round(s.unitAtk * 10) / 10, unitDef: Math.round(s.unitDef * 10) / 10 }
       : { moraleBand: s.morale > 66 ? 'high' : s.morale > 33 ? 'medium' : 'low' }),
   });
   const powFrac = (sd) => tactics.sidePower(state, sd) / Math.max(state[sd].startPower, 1);
   return {
+    battleId: state.battleId,
     grid: state.grid,
     terrain: state.terrain,
+    obstacles: state.obstacles,
+    keeps: state.keeps,
+    objectives: state.objectives || { attacker: 0, defender: 0, neutral: state.keeps.length },
     round: state.round,
     maxRounds: TACTICS.maxRounds,
     orderTimerSec: TACTICS.orderTimerSec,

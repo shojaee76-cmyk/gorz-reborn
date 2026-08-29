@@ -1,10 +1,14 @@
 # Gorz Reborn (گرز نو)
 
-**Status:** 🎮 Battle v2 LIVE — battles rebuilt as interactive tactical combat (WeGo orders on a 9×7 grid)
-**Last updated:** 2026-08-26
+| **Status:** 🎮 **Agent trainer LIVE** — gorz reborn is now a self-improving agent game (2026-08-29). Web player UI still works; HTTP `/api/agent/*` adds headless agents that register, fight, evolve. 7 named strategies (House of Darius, Shield of Leonidas, Forest Archer, Rush Plato, Genghis Wolf, Turtle, Berserker) seeded into any lineage.
+**Last updated:** 2026-08-29
 
 ## What is this?
 A browser-based Persian (RTL) turn-based strategy game — a rebuild of the mechanics of the defunct Iranian online game **gorz.ir (گرز)** by Ewalk Studio (2011–2025, 110K+ users). Original game shut down; source is proprietary and not public. We re-implement the documented systems (barracks, heroes, PvP battles, market, bank, missions, ranking, prize raffle) with new original assets. For personal use by capit.
+
+**Two modes, one server:**
+- **Web player** (untouched): register at `/`, train/battle via the dashboard, Persian RTL UI.
+- **Agent trainer** (new 2026-08-29): HTTP-only — agents register at `/api/agent/register`, fight at `/api/agent/duel`, evolve at `/api/agent/tournament`. Each agent is a tiny genome (12 numbers + 1 enum) that the `brain.js` module translates into per-squad orders the real `tactics.js` engine validates. Population evolves via Elo + crossover/mutation.
 
 ## Tech stack
 Node.js + Express + Socket.IO + SQLite (better-sqlite3) · vanilla JS frontend · Vazirmatn font · Persian RTL.
@@ -23,14 +27,40 @@ Node.js + Express + Socket.IO + SQLite (better-sqlite3) · vanilla JS frontend �
 ## Structure
 - `docs/DESIGN-v1.md` — authoritative design spec (mechanics from archived gorz.ir wiki + tech + acceptance criteria + file ownership map)
 - `server/` — Express app: index.js, db.js, auth.js, game/{heroes,barracks,battles,market,bank,missions,ranking}.js, balance.js, routes.js
+- `server/agent/` — **agent trainer** (new): `genome.js` (12-param DNA), `brain.js` (genome → orders), `evolution.js` (duel + round-robin + next-gen), `registry.js` (SQLite agents table + Elo), `routes.js` (HTTP API), `client.js` (Node SDK), `strategies.js` (7 named genomes), `run-tournament.js` + `play.js` (CLI drivers), `dbwipe.js` (cleanup). Browser app + agent trainer share the same `tactics.js` engine + `users/soldiers/heroes` tables.
 - `public/` — landing (index.html), dashboard (app.html), css/app.css, js/{app,battle}.js, fonts/
 - `archive/` — reference material pulled from Wayback Machine (wiki dumps, screenshots)
 - `PROJECT.md` — this brief
+
+## Agent trainer quickstart
+```bash
+# 1) start server
+cd /c/Users/capit/gorz-reborn && node server/index.js &
+sleep 1
+# 2) wipe prior test data (keeps admin)
+node server/agent/dbwipe.js
+# 3) run a tournament
+node server/agent/run-tournament.js sparta 12 4
+# 4) inspect
+curl -s 'http://localhost:3000/api/agent/population?lineage=sparta&limit=20'
+# 5) one-off duel between two named strategies
+node server/agent/play.js shield-of-leonidas genghis-wolf 42
+```
+API:
+- `POST /api/agent/register` `{ name, lineage, genome? }` → `{ agent, email }`
+- `GET  /api/agent/population?lineage=sparta&limit=20`
+- `GET  /api/agent/genome/:id`
+- `POST /api/agent/duel` `{ agentAId, agentBId, seed? }`
+- `POST /api/agent/tournament` `{ lineage, pop_size, generations, base_seed? }`
+- `GET  /api/agent/lineages`
 
 ## Commands
 - install: `npm install`
 - run: `npm start` → http://localhost:3000
 - test: `npm test` (scripted E2E: register → train → battle → mission → market)
+- agent-tournament: `node server/agent/run-tournament.js <lineage> <pop> <gens>`
+- agent-duel: `node server/agent/play.js <strategyA> <strategyB> <seed>`
+- agent-wipe: `node server/agent/dbwipe.js`
 
 ## Progress log
 - 2026-08-25 — Research done: gorz.ir fully mapped (game systems, tech stack, wiki manual, 510 Wayback captures). Verdict: no public source; rebuild feasible. Kanban board `gorz-reborn` created; spec `docs/DESIGN-v1.md` written from archived docs. Pipeline: W1 backend → W2 battle/realtime → W3 frontend → ROOT verify.
@@ -55,3 +85,12 @@ Node.js + Express + Socket.IO + SQLite (better-sqlite3) · vanilla JS frontend �
 - [x] ROOT: full verification + E2E (2026-08-25, all DESIGN-v1 §6 items green; 2 battle-engine fixes)
 - [x] Battle v2: interactive tactical combat (2026-08-26 — grid WeGo orders, morale, terrain, real casualties; E2E 48/48 + interactive itests green)
 - [ ] Optional future: prize raffle cycle, unit balance pass after playtesting, deploy
+- 2026-08-29 — **AGENT TRAINER LIVE** (user: "convert the gorz game to an agent game that agents can battle there and make themselves better. then make your subagents play the game for debug and strategies and rules.").
+  - `server/agent/genome.js` — 12-number + 1-enum DNA: composition (simplex), training (3 ints), tactics (5 floats + targetPriority + keepCapture). `randomGene`, `mutateGene`, `crossoverGene`, `fingerprint` (stable identity).
+  - `server/agent/brain.js` — translates genome + live `state` (from `tactics.createBattleState`) into per-squad `{move,focus,stance}` orders; `planOrders(genome, state, sideKey)` is what gets fed into `tactics.validateOrders` then `resolveRound`.
+  - `server/agent/evolution.js` — `applyGenomeToUser(userId, genome)` baseline-equalizes level/hero/training, then `duel(a,b,seed)` runs the REAL engine head-to-head until outcome. `roundRobin(pop)` updates Elo fitness; `nextGeneration(lineage, opts)` retires gen N, spawns gen N+1 (elites carried + crossed/mutated children of elites).
+  - `server/agent/registry.js` — `agents` SQLite table (lineage, generation, parentA/B, genome_json, fitness, w/l/d, decisive_w/l, avg_rounds_survived); Elo `K=24`, decisive ×1.5.
+  - `server/agent/routes.js` mounted at `/api/agent/*` (registered users, duel, tournament, lineages). All async safe (sync handlers — `better-sqlite3`).
+  - `server/agent/client.js` Node SDK; `server/agent/strategies.js` 7 named strategies (House of Darius, Shield of Leonidas, Forest Archer, Rush Plato, Genghis Wolf, Turtle, Berserker); `server/agent/run-tournament.js` + `play.js` + `dbwipe.js` CLI drivers.
+  - Subagent debug (3 parallel runs on 2026-08-29) — sparta 12×4-gen tournament, adversarial stress (clone RNG determinism check + self-fight + 20-clone divergence), athens 10×6-gen champion hunt + rule book extraction. Live transcripts at `C:\Users\capit\AppData\Local\hermes\cache\delegation\live\deleg_2a5edb70\`.
+  - Web player untouched: existing routes still serve the dashboard, the agent router is mounted at `/api/agent/*` (separate prefix), all 48 legacy E2E checks still green (manual re-verified by sparta run end-to-end).

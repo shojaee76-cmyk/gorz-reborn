@@ -121,6 +121,7 @@
         battleId = r.data.battleId;
         mySide = r.data.side;
         window.GORZ_LAST_SIDE = mySide;
+        if (r.data.vsAi) setStatus('در برابر هوش مصنوعی — نوبت شما');
         enterLive();
       } else {
         // legacy/auto-mode payload: full result in one shot
@@ -184,6 +185,9 @@
   function renderCommand(v) {
     if (!v) return;
     view = v;
+    // derive our side from the authoritative view so selection/ownership work
+    // even when renderCommand is called directly (not via enterBattle).
+    mySide = v.you || v.side || mySide;
     draft = {};
     selectedId = null;
     for (const s of v.squads) {
@@ -240,9 +244,52 @@
   function drawBoard(v) {
     const board = el('tac-board');
     if (!board) return;
-    board.style.setProperty('--cols', v.grid.w);
-    board.style.setProperty('--rows', v.grid.h);
-    let html = '';
+    board.innerHTML = '';
+    // Fantasy war-map SVG (no external assets). GorzMap.buildMap draws
+    // attacker home at the bottom row, defender home at the top row.
+    if (window.GorzMap && typeof window.GorzMap.buildMap === 'function') {
+      try {
+        const svg = window.GorzMap.buildMap(v, {
+          seed: v.battleId,
+          squads: v.squads,
+          selectedId: selectedId || null,
+          pendingMove: (selectedId && draft[selectedId] && draft[selectedId].move) || null,
+          pendingFrom: (selectedId && draft[selectedId] && draft[selectedId].move && (function () {
+            const s = v.squads.find((q) => q.id === selectedId);
+            return s ? { x: s.x, y: s.y } : null;
+          })()) || null,
+          trails: (v.trails && v.trails.length ? v.trails : (window.__gorzTrails || [])),
+          isMySquad: (sq) => owns(sq),
+          onSelect: (sid) => onChipClick(sid),
+        });
+        board.appendChild(svg);
+        if (window.GorzMap && window.GorzMap.attachPanZoom) window.GorzMap.attachPanZoom(svg, v);
+        svg.querySelectorAll('.banner').forEach((g) =>
+          g.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            onChipClick(g.dataset.squad);
+          })
+        );
+        // click empty terrain (or a keep) to issue a move order
+        svg.addEventListener('click', (ev) => {
+          if (ev.target.closest('.banner')) return; // handled above
+          const pt = svg.createSVGPoint();
+          pt.x = ev.clientX; pt.y = ev.clientY;
+          const loc = pt.matrixTransform(svg.getScreenCTM().inverse());
+          const vb = svg.viewBox.baseVal;
+          const cw = vb.width / view.grid.w, ch = vb.height / view.grid.h;
+          const gx = Math.floor(loc.x / cw), gy = Math.floor(loc.y / ch);
+          if (gx < 0 || gx >= view.grid.w || gy < 0 || gy >= view.grid.h) return;
+          onCellClick(gx, gy);
+        });
+        paintSelection();
+        return;
+      } catch (err) {
+        console.error('[battle] map render failed, falling back to grid', err);
+      }
+    }
+    // --- fallback: flat grid (only if the map module failed to load) ---
+    let html = '<div class="tac-fx"></div>';
     for (let vy = 0; vy < v.grid.h; vy++) {
       for (let x = 0; x < v.grid.w; x++) {
         const ly = v.you === 'attacker' ? vy : v.grid.h - 1 - vy; // logical y
@@ -325,6 +372,51 @@
   function paintSelection() {
     const board = el('tac-board');
     if (!board || !view) return;
+    const usingMap = !!board.querySelector('svg.tac-map');
+    if (usingMap) {
+      board.querySelectorAll('.banner').forEach((g) => {
+        g.classList.toggle('selected', g.dataset.squad === selectedId);
+        const foc = selectedId && draft[selectedId] && draft[selectedId].focus === g.dataset.squad;
+        g.classList.toggle('focused', !!foc);
+      });
+      const old = board.querySelectorAll('.tac-map-fx');
+      old.forEach((n) => n.remove());
+      if (selectedId && !view.submitted) {
+        const s = view.squads.find((q) => q.id === selectedId);
+        if (s) {
+          const svg = board.querySelector('svg.tac-map');
+          const vb = svg.viewBox.baseVal;
+          const cw = vb.width / view.grid.w, ch = vb.height / view.grid.h;
+          const cx = (x) => (x + 0.5) * cw, cy = (y) => (y + 0.5) * ch;
+          const fx = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+          fx.setAttribute('class', 'tac-map-fx');
+          for (let dy = -(s.mp + 2); dy <= s.mp + 2; dy++) {
+            for (let dx = -(s.mp + 2); dx <= s.mp + 2; dx++) {
+              const x = s.x + dx, y = s.y + dy;
+              if (x < 0 || x >= view.grid.w || y < 0 || y >= view.grid.h) continue;
+              if (view.obstacles && view.obstacles.some((o) => o.x === x && o.y === y)) continue;
+              const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+              rect.setAttribute('x', x * cw + 1); rect.setAttribute('y', y * ch + 1);
+              rect.setAttribute('width', cw - 2); rect.setAttribute('height', ch - 2);
+              rect.setAttribute('fill', 'rgba(224,138,60,.12)');
+              rect.setAttribute('stroke', 'rgba(224,138,60,.45)');
+              rect.setAttribute('stroke-width', '0.8');
+              fx.appendChild(rect);
+            }
+          }
+          const mv = draft[selectedId] && draft[selectedId].move;
+          if (mv) {
+            const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            dot.setAttribute('cx', cx(mv.x)); dot.setAttribute('cy', cy(mv.y)); dot.setAttribute('r', Math.min(cw, ch) * 0.22);
+            dot.setAttribute('fill', '#f0a04e'); dot.setAttribute('stroke', '#0c0e11'); dot.setAttribute('stroke-width', 1);
+            fx.appendChild(dot);
+          }
+          svg.appendChild(fx);
+        }
+      }
+      return;
+    }
+    // fallback grid path
     board.querySelectorAll('.tac-cell.in-range').forEach((c) => c.classList.remove('in-range'));
     board.querySelectorAll('.tac-chip').forEach((ch) => {
       ch.classList.toggle('selected', ch.dataset.sid === selectedId);
@@ -335,20 +427,18 @@
     if (selectedId && !view.submitted) {
       const s = view.squads.find((q) => q.id === selectedId);
       if (s) {
-        // movement ring
         for (let dy = -(s.mp + 2); dy <= s.mp + 2; dy++) {
           for (let dx = -(s.mp + 2); dx <= s.mp + 2; dx++) {
             const x = s.x + dx;
             const y = s.y + dy;
             if (x < 0 || x >= view.grid.w || y < 0 || y >= view.grid.h) continue;
-            const cell = board.querySelector(`.tac-cell[data-x="${x}"][data-y="${y}"]`);
+            const cell = board.querySelector(`.tac-cell[data-x='${x}'][data-y='${y}']`);
             if (cell) cell.classList.add('in-range');
           }
         }
-        // pending move marker
         const mv = draft[selectedId] && draft[selectedId].move;
         if (mv) {
-          const cell = board.querySelector(`.tac-cell[data-x="${mv.x}"][data-y="${mv.y}"]`);
+          const cell = board.querySelector(`.tac-cell[data-x='${mv.x}'][data-y='${mv.y}']`);
           if (cell) {
             const dot = document.createElement('span');
             dot.className = 'tac-move-dot';
@@ -456,10 +546,28 @@
   }
 
   function handleRoundResponse(data) {
+    // vs AI: the round resolves immediately on the human's single submit.
+    if (data.vsAi && !data.waiting) {
+      if (data.outcome && data.outcome.over) {
+        // battle finished this round -> show results (server finalized)
+        renderFinished(data);
+        return;
+      }
+      if (data.winner !== undefined) {
+        // finalized payload (finalizeBattle result): winner is set, no events
+        renderFinished(data);
+        return;
+      }
+      // mid-battle: replay the round's events, then snap to next-round view
+      if (data.events) playRound(data);
+      if (data.view) renderCommand(data.view);
+      return;
+    }
     if (data.waiting) {
       view = data.view || view;
       if (view) markSubmitted();
-      setStatus('دستورها ثبت شد؛ در انتظار حریف…');
+      if (data.vsAi) setStatus('دستورات ثبت شد؛ هوش مصنوعی در حال حرکت…');
+      else setStatus('دستورها ثبت شد؛ در انتظار حریف…');
       return;
     }
     if (data.events) playRound(data);
@@ -716,6 +824,7 @@
     battlePage,
     enterBattle,
     renderResult: renderFinished,
+    renderCommand,
     loadHistory,
     socket: () => socket,
   };

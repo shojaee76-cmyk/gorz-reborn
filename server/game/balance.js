@@ -121,16 +121,25 @@ const BATTLE = {
 // ----- Tactical battle system (interactive grid combat) ---------
 // All knobs for tactics.js live here.
 const TACTICS = {
-  gridW: 9,
-  gridH: 7,
+  gridW: 17,
+  gridH: 15,
   squadSize: 25,        // soldiers per squad
   maxSquadsPerSide: 8,  // army splits into at most this many squads
-  maxRounds: 20,        // hard round cap -> points decision/draw
+  maxRounds: 22,        // hard round cap -> points decision/draw
   orderTimerSec: Number(process.env.GORZ_ORDER_TIMER_SEC) || 45, // per-round order window before AI kicks in
 
   // terrain generation
-  forestChance: 0.14,   // forest tile: +def, blocks cavalry charge
-  hillChance: 0.10,     // hill tile: +atk for whoever stands on it
+  forestChance: 0.16,   // forest tile: +def, blocks cavalry charge
+  hillChance: 0.12,     // hill tile: +atk for whoever stands on it
+
+  // landmarks (occupied, impassable) + neutral capturable keeps
+  lakeCount: 3,         // impassable water
+  mountainCount: 5,     // impassable peaks
+  ruinsCount: 4,        // impassable rubble (light def bonus to adjacent)
+  keepCount: 3,         // neutral keeps in the open middle band (capture to hold)
+  keepDefBonus: 0.40,   // +40% defense while holding a keep
+  keepHoldAtkBonus: 0.15, // keep garrison also hits a bit harder
+  keepCaptureRadius: 0, // must stand ON the keep tile to capture
 
   // terrain effects
   forestDefBonus: 0.35,   // +35% defense in forest

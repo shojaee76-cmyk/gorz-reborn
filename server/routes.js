@@ -205,6 +205,12 @@ router.get('/health', (req, res) => {
   res.json({ ok: true, name: 'gorz-reborn', status: 'running' });
 });
 
+// ---------------- agent (self-improving agent trainer) --------
+// Mounted under /api/agent so the existing browser app keeps using
+// /api/* unchanged.
+const agentRouter = require('./agent/routes');
+router.use('/agent', agentRouter);
+
 // 404 + error handling
 router.use((req, res) => res.status(404).json({ error: 'مسیر یافت نشد.' }));
 router.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
