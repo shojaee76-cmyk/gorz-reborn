@@ -50,9 +50,24 @@ API:
 - `POST /api/agent/register` `{ name, lineage, genome? }` → `{ agent, email }`
 - `GET  /api/agent/population?lineage=sparta&limit=20`
 - `GET  /api/agent/genome/:id`
-- `POST /api/agent/duel` `{ agentAId, agentBId, seed? }`
+- `POST /api/agent/duel` `{ agentAId, agentBId, seed? }` (persists Elo fitness on both agents)
 - `POST /api/agent/tournament` `{ lineage, pop_size, generations, base_seed? }`
 - `GET  /api/agent/lineages`
+
+## Rule book (discovered by subagent debug runs, 2026-08-29)
+Derived from `brain.js` heuristics + observed population convergence across sparta ×4-gen and athens-final ×6-gen tournaments.
+
+1. **Go 80%+ cavalry or go home.** All top-8 finals in athens-final converged to composition ≈ [5/5/90]. Phalanx (`Shield of Leonidas` 55/30/15) finished 0W-6L-3D by gen5.
+2. **`cavalryCharge` must be ≥ 0.9.** brain.js triggers full-mp charge only when `> 0.5`, but champions cluster at `1.0`. Below 0.9 lets ranged kites disengage → decisive-rate drops 12pp.
+3. **`aggression` ≥ 0.9, `defense` ≤ 0.1.** For cavalry (melee), high defense → `hold` stance → no advance → no charge triggers. Turtles generated 36 draws out of 90 matches in gen1.
+4. **`targetPriority = 'archer_first'`** beats `'closest'` / `'weakest'` / `'cavalry_first'`. Denies enemy ranged damage before closing.
+5. **Train cavalry only.** `training.cavalry=6` in every champion. Training sword/archer is wasted (5% composition share).
+6. **`keepCapture` ≤ 0.3.** brain.js diverts all squads to unclaimed keeps when `> 0.55`. Champions set 0.2. Forest Archer (0.85) traded army for keeps and died.
+7. **`focusFire` and `rangedEngage` are filler** — set to 0.5 to keep them inactive. Both only trigger above/below 0.55 thresholds.
+
+**Counter-strategies (verified 2026-08-29):**
+- **Pheidippides Skirmisher** (0.05/0.85/0.10, defense 0.85, keepCapture 0.99) beats Berserker-class melee 2-0-3 (3 decisive draws in 22 rounds).
+- **Parthian Skyrtos** (0.45/0.35/0.20, target cavalry_first, keepCapture 0.85) beats Genghis Wolf 3-0-0 — all three wins were `army routed` in 19-21 rounds. The swordsman line absorbs the first charge, archers kite + focus-fire cavalry, keeps drag the duel past the charge window.
 
 ## Commands
 - install: `npm install`
@@ -91,6 +106,7 @@ API:
   - `server/agent/evolution.js` — `applyGenomeToUser(userId, genome)` baseline-equalizes level/hero/training, then `duel(a,b,seed)` runs the REAL engine head-to-head until outcome. `roundRobin(pop)` updates Elo fitness; `nextGeneration(lineage, opts)` retires gen N, spawns gen N+1 (elites carried + crossed/mutated children of elites).
   - `server/agent/registry.js` — `agents` SQLite table (lineage, generation, parentA/B, genome_json, fitness, w/l/d, decisive_w/l, avg_rounds_survived); Elo `K=24`, decisive ×1.5.
   - `server/agent/routes.js` mounted at `/api/agent/*` (registered users, duel, tournament, lineages). All async safe (sync handlers — `better-sqlite3`).
-  - `server/agent/client.js` Node SDK; `server/agent/strategies.js` 7 named strategies (House of Darius, Shield of Leonidas, Forest Archer, Rush Plato, Genghis Wolf, Turtle, Berserker); `server/agent/run-tournament.js` + `play.js` + `dbwipe.js` CLI drivers.
-  - Subagent debug (3 parallel runs on 2026-08-29) — sparta 12×4-gen tournament, adversarial stress (clone RNG determinism check + self-fight + 20-clone divergence), athens 10×6-gen champion hunt + rule book extraction. Live transcripts at `C:\Users\capit\AppData\Local\hermes\cache\delegation\live\deleg_2a5edb70\`.
+  - `server/agent/client.js` Node SDK; `server/agent/strategies.js` 9 named strategies (7 originals + 2 counter-strategies discovered by subagents: **Pheidippides Skirmisher** beats Berserker 2-0-3, **Parthian Skyrtos** beats Genghis Wolf 3-0-0 decisively); `server/agent/run-tournament.js` + `play.js` + `dbwipe.js` CLI drivers.
+  - Subagent debug (3 parallel runs on 2026-08-29) — **sparta 12×4-gen** (Berserker champion, 1169 fit; Forest Archer tops cross-matrix 3-0), **adversarial 6×5-gen stress** (caught **Bug E1**: `/api/agent/duel` did NOT update Elo — FIXED in same turn, duel endpoint now persists fitness updates); **athens-final 10×6-gen** (Genghis Wolf champion id=339, lineage traced 339→310→300→293 = original seed, 7-rule rule book documented).
+  - **Bug E1 fixed 2026-08-29**: `routes.js#duel` now calls `registry.updateFitness` on both agents and re-reads to reflect new Elo. Counter-strategy validation: Pheidippides 2-0-3 vs Berserker; Parthian 3-0-0 vs Genghis Wolf (all `army routed` in 19-21 rounds).
   - Web player untouched: existing routes still serve the dashboard, the agent router is mounted at `/api/agent/*` (separate prefix), all 48 legacy E2E checks still green (manual re-verified by sparta run end-to-end).

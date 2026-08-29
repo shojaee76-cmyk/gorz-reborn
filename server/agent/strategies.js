@@ -101,6 +101,30 @@ const STRATEGIES = {
       tactics: { aggression: 1.0, defense: 0.0, focusFire: 0.3, targetPriority: 'weakest', cavalryCharge: 0.9, keepCapture: 0.1 },
     }),
   },
+
+  // ============= counter-strategies (added 2026-08-29 by subagent debug) ============
+  // Discovered by sparta 4-gen tournament subagent: pure archer horde with extreme
+  // keepCapture to kite Berserker-class melee and win on points.
+  'pheidippides-skirmisher': {
+    name: 'Pheidippides Skirmisher',
+    description: 'Pure archer horde with max keepCapture — kites Berserker-class melee and wins on points.',
+    genome: makeGenome({
+      swordsman: 0.05, archer: 0.85, cavalry: 0.10,
+      training: { swordsman: 0, archer: 6, cavalry: 1 },
+      tactics: { aggression: 0.20, defense: 0.85, targetPriority: 'archer_first', focusFire: 0.85, cavalryCharge: 0.20, rangedEngage: 0.05, keepCapture: 0.99 },
+    }),
+  },
+  // Discovered by athens-final 6-gen tournament subagent: swordsman-heavy kite + attrition
+  // that should beat the pure-cavalry champion by absorbing the charge and outranging.
+  'parthian-skyrtos': {
+    name: 'Parthian Skyrtos',
+    description: 'Swordsman-heavy kite+attrition; absorbs cavalry charge, kites back, focus-fires cav, plays keeps.',
+    genome: makeGenome({
+      swordsman: 0.45, archer: 0.35, cavalry: 0.20,
+      training: { swordsman: 4, archer: 3, cavalry: 2 },
+      tactics: { aggression: 0.55, defense: 0.70, targetPriority: 'cavalry_first', focusFire: 0.95, cavalryCharge: 0.20, rangedEngage: 0.10, keepCapture: 0.85 },
+    }),
+  },
 };
 
 function listStrategies() {

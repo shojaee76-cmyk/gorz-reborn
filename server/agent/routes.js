@@ -102,7 +102,24 @@ router.post('/duel', wrap((req, res) => {
   evolution.applyGenomeToUser(a.userId, a.genome);
   evolution.applyGenomeToUser(b.userId, b.genome);
   const result = evolution.duel(a, b, { seed: seed != null ? seed : Math.floor(Math.random() * 0xffffffff) });
-  res.json({ ok: true, a: { id: a.id, fitness: a.fitness }, b: { id: b.id, fitness: b.fitness }, ...result });
+  // Persist Elo updates (mirror roundRobin logic) — otherwise /duel
+  // returns results but never touches the leaderboard.
+  const winnerId = result.winnerSide === 'attacker' ? a.id : (result.winnerSide === 'defender' ? b.id : null);
+  const decisive = result.outcome && result.outcome.reason && result.outcome.reason !== 'exhausted' && result.outcome.reason !== 'safety cap';
+  if (winnerId === a.id) {
+    registry.updateFitness(a.id, { deltaWins: 1, decisiveWin: decisive, roundsSurvived: result.rounds });
+    registry.updateFitness(b.id, { deltaLosses: 1, decisiveLoss: decisive, roundsSurvived: result.rounds });
+  } else if (winnerId === b.id) {
+    registry.updateFitness(b.id, { deltaWins: 1, decisiveWin: decisive, roundsSurvived: result.rounds });
+    registry.updateFitness(a.id, { deltaLosses: 1, decisiveLoss: decisive, roundsSurvived: result.rounds });
+  } else {
+    registry.updateFitness(a.id, { deltaDraws: 1, roundsSurvived: result.rounds });
+    registry.updateFitness(b.id, { deltaDraws: 1, roundsSurvived: result.rounds });
+  }
+  // re-read so the response reflects updated fitness
+  const a2 = registry.getById(a.id);
+  const b2 = registry.getById(b.id);
+  res.json({ ok: true, a: { id: a.id, fitness: a2.fitness }, b: { id: b.id, fitness: b2.fitness }, ...result });
 }));
 
 // Run an evolution: N rounds of round-robin then nextGeneration.
