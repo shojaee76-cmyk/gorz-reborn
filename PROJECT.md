@@ -67,6 +67,8 @@ Derived from `brain.js` heuristics + observed population convergence across spar
 
 8. **Homogeneous populations produce decisive matches, not draws.** When most of the population converges to the same genome, mirror matches don't grind to round 22 — the cavalry race resolves in <20 rounds. Long-evo peaked at 83.2% decisive rate at gen 11 when the entire top-10 was identical Genghis-Wolf; gen 12 settled to 78.4%. **Decisive rate is a population-homogeneity signal**, not necessarily a strength signal.
 
+9. **Lineage name doesn't constrain outcome.** In the 3-lineage world cup (sword-school, archer-school, cav-school ×6 gens), only cav-school kept its identity (champion = identical Genghis-Wolf seed). sword-school's champion was a 50/0/50 Berserker-class hybrid, and archer-school's champion was the Shield-of-Leonidas defensive phalanx (55/30/15, defense=0.9, focusFire=0.95) — the only defense that survives cavalry. The seed pool shapes the **path of evolution**, not the destination.
+
 **Counter-strategies (verified 2026-08-29):**
 - **Pheidippides Skirmisher** (0.05/0.85/0.10, defense 0.85, keepCapture 0.99) beats Berserker-class melee 2-0-3 (3 decisive draws in 22 rounds).
 - **Parthian Skyrtos** (0.45/0.35/0.20, target cavalry_first, keepCapture 0.85) beats Genghis Wolf 3-0-0 — all three wins were `army routed` in 19-21 rounds. The swordsman line absorbs the first charge, archers kite + focus-fire cavalry, keeps drag the duel past the charge window.
