@@ -97,6 +97,15 @@ function listByLineage(lineage, { includeRetired = false, limit = 100 } = {}) {
   return rows.map(rowToAgent);
 }
 
+// Across every lineage. Used by the /population endpoint when no
+// lineage is specified (the global leaderboard view).
+function listAll({ includeRetired = false, limit = 500 } = {}) {
+  const rows = includeRetired
+    ? db.prepare('SELECT * FROM agents ORDER BY fitness DESC LIMIT ?').all(limit)
+    : db.prepare('SELECT * FROM agents WHERE retired_at IS NULL ORDER BY fitness DESC LIMIT ?').all(limit);
+  return rows.map(rowToAgent);
+}
+
 function updateFitness(id, { deltaWins = 0, deltaLosses = 0, deltaDraws = 0, decisiveWin = false, decisiveLoss = false, roundsSurvived = null, fitness = null }) {
   // Elo-ish: 1000 base. Win +20, Loss -18, Draw 0; decisive = 1.5x.
   const agent = getById(id);
@@ -137,6 +146,7 @@ module.exports = {
   getById,
   getByUserId,
   listByLineage,
+  listAll,
   updateFitness,
   retire,
   topN,

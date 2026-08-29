@@ -80,10 +80,15 @@ router.post('/register', wrap((req, res) => {
 }));
 
 router.get('/population', wrap((req, res) => {
-  const lineage = (req.query.lineage || 'sparta').toString();
+  // lineage is OPTIONAL — omitting it returns agents from ALL lineages,
+  // ordered most-recent first (so the leaderboard page can show a global view).
+  const lineage = req.query.lineage ? req.query.lineage.toString() : null;
   const includeRetired = req.query.include_retired === '1';
   const limit = Math.min(500, parseInt(req.query.limit, 10) || 100);
-  res.json({ ok: true, agents: registry.listByLineage(lineage, { includeRetired, limit }) });
+  const agents = lineage
+    ? registry.listByLineage(lineage, { includeRetired, limit })
+    : registry.listAll({ includeRetired, limit });
+  res.json({ ok: true, agents });
 }));
 
 router.get('/genome/:id', wrap((req, res) => {
