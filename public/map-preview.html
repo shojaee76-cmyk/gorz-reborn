@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gorz Reborn — نقشه نبرد</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --bg:#0c0e11; }
+  body{ margin:0; background:radial-gradient(circle at 50% 0%, #1a1410, #0c0e11 70%); color:#e8dcc2;
+        font-family:'Vazirmatn',system-ui,sans-serif; }
+  .wrap{ max-width:1000px; margin:0 auto; padding:18px; }
+  h1{ font-size:18px; color:#f0a04e; letter-spacing:1px; }
+  .frame{ margin-top:12px; border:1px solid #2a221a; border-radius:14px; overflow:hidden;
+          background:#0f1115; box-shadow:0 12px 40px rgba(0,0,0,.5); position:relative; }
+  .legend{ display:flex; gap:14px; flex-wrap:wrap; margin-top:12px; font-size:12px; color:#b9a877; }
+  .legend b{ color:#e8dcc2; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>گرز نو — نقشه نبرد (پیش‌نمایش)</h1>
+  <div class="frame" id="frame"></div>
+  <div class="legend">
+    <span><b>🔥 قلعه شما</b> ردیف پایین</span>
+    <span><b>🚩 قلعه دشمن</b> ردیف بالا</span>
+    <span><b>🏰 قلعه‌های خنثی</b> میانه — تصرف کن!</span>
+    <span><b>⛰️ کوه / 🌊 دریاچه / 🏚️ ویرانه</b> غیرقابل عبور</span>
+    <span><b>🧭 کشیدن + چرخاندن</b> بزرگ‌نمایی/جابجایی نقشه</span>
+  </div>
+</div>
+<script src="js/battle-map.js"></script>
+<script>
+// Build a representative view (mirrors what the server sends) so the map
+// renderer can be eyeballed without a live battle.
+const W=17, H=15;
+const terrain=[]; for(let y=0;y<H;y++){ const r=[]; for(let x=0;x<W;x++){
+  const n=Math.random(); r.push(n<0.16?'forest':n<0.28?'hill':'plain'); } terrain.push(r); }
+const obstacles=[
+  {kind:'lake',x:4,y:6},{kind:'lake',x:11,y:4},{kind:'lake',x:8,y:10},
+  {kind:'mountain',x:3,y:9},{kind:'mountain',x:13,y:8},{kind:'mountain',x:7,y:3},
+  {kind:'ruins',x:6,y:7},{kind:'ruins',x:10,y:11},{kind:'ruins',x:2,y:5},{kind:'ruins',x:14,y:6},
+];
+const keeps=[
+  {x:5,y:6,owner:null,name:'قلعه ۱'},{x:11,y:6,owner:'attacker',name:'قلعه ۲'},{x:8,y:8,owner:'defender',name:'قلعه ۳'}
+];
+const squads=[
+  {id:'ح1',side:'attacker',type:'swordsman',count:42,x:8,y:13,mp:1,range:1,onKeep:false,routed:false},
+  {id:'ح2',side:'attacker',type:'archer',count:30,x:6,y:14,mp:1,range:3,onKeep:false,routed:false},
+  {id:'ح3',side:'attacker',type:'cavalry',count:28,x:10,y:14,mp:2,range:1,onKeep:false,routed:false},
+  {id:'ح4',side:'attacker',type:'swordsman',count:36,x:9,y:12,mp:1,range:1,onKeep:true,routed:false},
+  {id:'د1',side:'defender',type:'swordsman',count:40,x:8,y:1,mp:1,range:1,onKeep:false,routed:false},
+  {id:'د2',side:'defender',type:'archer',count:32,x:7,y:0,mp:1,range:3,onKeep:false,routed:false},
+  {id:'د3',side:'defender',type:'cavalry',count:26,x:9,y:0,mp:2,range:1,onKeep:false,routed:false},
+];
+const view={battleId:777,grid:{w:W,h:H},terrain,obstacles,keeps,round:3,
+  objectives:{attacker:1,defender:1,neutral:1},squads};
+const svg=window.GorzMap.buildMap(view,{seed:777,squads,
+  selectedId:'ح1',
+  pendingMove:{x:8,y:11},
+  pendingFrom:{x:8,y:13},
+  trails:[
+    [{x:8,y:13},{x:8,y:12},{x:8,y:11}],
+    [{x:6,y:12},{x:6,y:11}],
+    [{x:10,y:14},{x:9,y:12},{x:8,y:10}]
+  ]});
+document.getElementById('frame').appendChild(svg);
+// attach pan/zoom (same module the live battle uses)
+window.GorzMap.attachPanZoom(svg, view);
+</script>
+</body>
+</html>
