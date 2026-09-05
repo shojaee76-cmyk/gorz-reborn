@@ -1,7 +1,7 @@
 # Gorz Reborn (گرز نو)
 
-| **Status:** 🎮 **Agent trainer LIVE** — gorz reborn is now a self-improving agent game (2026-08-29). Web player UI still works; HTTP `/api/agent/*` adds headless agents that register, fight, evolve. 7 named strategies (House of Darius, Shield of Leonidas, Forest Archer, Rush Plato, Genghis Wolf, Turtle, Berserker) seeded into any lineage.
-**Last updated:** 2026-08-29
+| **Status:** 🏰 **v3 "The Four Castles" SHIPPED** (2026-09-05) — symmetric 4-castle map with real terrain rules live, commander + 3 lieutenants per side, viewer theater at /watch.html, machine rulebook at /api/agent/rules. GitHub: github.com/shojaee76-cmyk/gorz-reborn · Static demo: https://gorz-reborn.netlify.app. Legacy E2E 48/48 + v3 suite 19/19 green.
+**Last updated:** 2026-09-05
 
 ## What is this?
 A browser-based Persian (RTL) turn-based strategy game — a rebuild of the mechanics of the defunct Iranian online game **gorz.ir (گرز)** by Ewalk Studio (2011–2025, 110K+ users). Original game shut down; source is proprietary and not public. We re-implement the documented systems (barracks, heroes, PvP battles, market, bank, missions, ranking, prize raffle) with new original assets. For personal use by capit.
@@ -103,7 +103,8 @@ Derived from `brain.js` heuristics + observed population convergence across spar
 - [x] W3 frontend + RTL theme (public/**)
 - [x] ROOT: full verification + E2E (2026-08-25, all DESIGN-v1 §6 items green; 2 battle-engine fixes)
 - [x] Battle v2: interactive tactical combat (2026-08-26 — grid WeGo orders, morale, terrain, real casualties; E2E 48/48 + interactive itests green)
-- [ ] Optional future: prize raffle cycle, unit balance pass after playtesting, deploy
+- [x] **v3 "The Four Castles"** (2026-09-05, shipped): mapgen.js point-symmetric 21×15 map (river x=10, 3 bridges y=3/7/11, mirrored 3×2 lakes + 3×3 mountains, jungle/forest/hill, 4 castles), real terrain rules (jungle 2MP, water/mountain impassable, charge denied in forest/jungle/castle, castle +40% def for owner), win conditions (capital fall instant, army destroyed, both-keeps 3-round siege, 30-round score), commander+3 lieutenants (0.85 aide mult), bridge-aware AI, public spectator API (/api/watch/*), /watch.html theater (animated arrows/charges/kill floats/rout marks/castle banner flips, live+replay), /rulebook.html human rulebook, GET /api/agent/rules machine rulebook, login page agent quickstart + watch button, tests itest-v3 19/19 + E2E 48/48, GitHub github.com/shojaee76-cmyk/gorz-reborn (MIT, topics, README), Netlify static demo https://gorz-reborn.netlify.app
+- [ ] Optional future: full-stack host for the live game on the internet (Render/Railway — Netlify serves static demo only), prize raffle cycle, unit balance pass after v3 playtesting, agent re-evolution on the v3 map (old Genghis-Wolf meta may not survive chokepoints)
 - 2026-08-29 — **AGENT TRAINER LIVE** (user: "convert the gorz game to an agent game that agents can battle there and make themselves better. then make your subagents play the game for debug and strategies and rules.").
   - `server/agent/genome.js` — 12-number + 1-enum DNA: composition (simplex), training (3 ints), tactics (5 floats + targetPriority + keepCapture). `randomGene`, `mutateGene`, `crossoverGene`, `fingerprint` (stable identity).
   - `server/agent/brain.js` — translates genome + live `state` (from `tactics.createBattleState`) into per-squad `{move,focus,stance}` orders; `planOrders(genome, state, sideKey)` is what gets fed into `tactics.validateOrders` then `resolveRound`.
