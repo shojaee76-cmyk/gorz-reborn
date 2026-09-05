@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تماشای نبرد — گرز نو</title>
+<style>
+  :root {
+    --bg: #14161a;
+    --panel: #1d2026;
+    --panel2: #23262d;
+    --border: #33373f;
+    --text: #e9e4d8;
+    --muted: #9a958a;
+    --ember: #e0924a;
+    --ember-dark: #c8742a;
+    --crimson: #c05555;
+    --gold: #f2c14e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: Vazirmatn, 'Segoe UI', Tahoma, sans-serif;
+    min-height: 100vh;
+  }
+  header {
+    display: flex; align-items: center; gap: 16px;
+    padding: 14px 22px; background: var(--panel);
+    border-bottom: 1px solid var(--border);
+  }
+  header h1 { font-size: 20px; font-weight: 700; color: var(--ember); }
+  header .vs { color: var(--muted); font-size: 14px; }
+  header .badge {
+    font-size: 12px; padding: 3px 10px; border-radius: 20px;
+    background: var(--panel2); border: 1px solid var(--border); color: var(--muted);
+  }
+  header .badge.live { color: #ff6b6b; border-color: #ff6b6b44; }
+  header .spacer { flex: 1; }
+  header a { color: var(--ember); text-decoration: none; font-size: 13px; }
+  main {
+    display: grid; grid-template-columns: 1fr 300px; gap: 14px;
+    padding: 14px 22px; max-width: 1400px; margin: 0 auto;
+  }
+  @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
+  .stage { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px; position: relative; overflow: hidden; }
+  .stage svg.gorz-map { width: 100%; height: auto; display: block; border-radius: 8px; }
+  .theater-controls {
+    display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap;
+  }
+  .theater-controls button {
+    background: var(--panel2); color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 14px; cursor: pointer; font-family: inherit; font-size: 13px;
+  }
+  .theater-controls button.primary { background: var(--ember-dark); border-color: var(--ember); color: #fff; }
+  .theater-controls button:disabled { opacity: 0.4; cursor: default; }
+  .round-indicator { font-size: 13px; color: var(--muted); }
+  .round-indicator b { color: var(--gold); }
+  .hud {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px;
+  }
+  .pow { background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
+  .pow .label { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; }
+  .pow .bar { height: 8px; background: #0e0f12; border-radius: 4px; margin-top: 6px; overflow: hidden; }
+  .pow .bar i { display: block; height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+  .pow.att .bar i { background: linear-gradient(90deg, var(--ember-dark), var(--ember)); }
+  .pow.def .bar i { background: linear-gradient(90deg, #7c2a2a, var(--crimson)); }
+  .castles-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .castle-chip {
+    font-size: 12px; padding: 4px 10px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--panel2); color: var(--muted); display: flex; align-items: center; gap: 6px;
+  }
+  .castle-chip .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--neutral, #7c8288); }
+  .castle-chip.att .dot { background: var(--ember); }
+  .castle-chip.def .dot { background: var(--crimson); }
+  .ticker {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px; max-height: 70vh; overflow-y: auto;
+  }
+  .ticker h3 { font-size: 14px; color: var(--ember); margin-bottom: 8px; }
+  .ticker .evt {
+    font-size: 12.5px; padding: 7px 9px; border-radius: 8px; margin-bottom: 6px;
+    background: var(--panel2); border-inline-start: 3px solid var(--border); line-height: 1.7;
+  }
+  .ticker .evt.move { border-color: #4a6d8c; }
+  .ticker .evt.strike { border-color: var(--ember); }
+  .ticker .evt.counter { border-color: #8c6a4a; }
+  .ticker .evt.rout { border-color: #ff6b6b; color: #ffb3a8; }
+  .ticker .evt.castle { border-color: var(--gold); color: var(--gold); }
+  .ticker .evt.end { border-color: var(--gold); background: #2a2416; font-weight: 700; }
+  .ticker .evt .r { color: var(--muted); font-size: 11px; margin-inline-end: 6px; }
+  .picker { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+  .picker button {
+    background: var(--panel2); color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 12.5px; font-family: inherit;
+  }
+  .picker button.active { border-color: var(--ember); color: var(--ember); }
+  .empty { color: var(--muted); font-size: 13px; padding: 30px; text-align: center; }
+  .gorz-legend {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 4px; margin-top: 10px;
+  }
+  .gorz-legend-item { display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--muted); }
+  .gorz-legend-item svg { border-radius: 4px; border: 1px solid var(--border); flex-shrink: 0; }
+  .fx-float {
+    position: absolute; font-weight: 800; pointer-events: none; z-index: 5;
+    animation: floatUp 1.1s ease-out forwards; text-shadow: 0 1px 4px #000;
+  }
+  @keyframes floatUp {
+    0% { opacity: 0; transform: translateY(6px) scale(0.8); }
+    15% { opacity: 1; transform: translateY(0) scale(1.1); }
+    100% { opacity: 0; transform: translateY(-26px) scale(1); }
+  }
+  .banner-flash { animation: bannerPulse 0.8s ease; }
+  @keyframes bannerPulse { 0% { filter: brightness(2.4); } 100% { filter: none; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>⚔ تماشای نبرد</h1>
+  <span class="vs" id="matchup"></span>
+  <span class="badge" id="stateBadge"></span>
+  <span class="spacer"></span>
+  <a href="/">خانه</a>
+  <a href="/rulebook.html">قوانین</a>
+</header>
+
+<main>
+  <section class="stage-wrap">
+    <div class="picker" id="picker"></div>
+    <div class="stage" id="stage">
+      <div class="empty" id="emptyMsg">نبردی برای تماشا نیست. اول یک نبرد راه بیندازید یا از لیست زیر یکی را انتخاب کنید.</div>
+    </div>
+    <div class="theater-controls" id="controls" hidden>
+      <button class="primary" id="btnPlay">▶ پخش</button>
+      <button id="btnPrev">⏮ راند قبل</button>
+      <button id="btnNext">راند بعد ⏭</button>
+      <span class="round-indicator">راند <b id="roundNow">0</b> / <span id="roundMax">0</span></span>
+    </div>
+    <div class="hud" id="hud" hidden>
+      <div class="pow att"><div class="label"><span>حمله (باختر)</span><span id="powA">100%</span></div><div class="bar"><i id="barA" style="width:100%"></i></div></div>
+      <div class="pow def"><div class="label"><span>دفاع (خاور)</span><span id="powD">100%</span></div><div class="bar"><i id="barD" style="width:100%"></i></div></div>
+    </div>
+    <div class="castles-row" id="castlesRow"></div>
+    <div id="legendHost"></div>
+  </section>
+
+  <aside class="ticker" id="tickerWrap" hidden>
+    <h3>📜 رویدادهای نبرد</h3>
+    <div id="ticker"></div>
+  </aside>
+</main>
+
+<script src="/js/map-svg.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const stage = $('stage');
+  let current = null;       // {mode:'live'|'replay', battleId, view, rounds}
+  let rendered = null;      // {svg, gSquads, gFx, cs, ...}
+  let playTimer = null;
+  let cursorRound = 0;
+
+  // ---------- helpers ----------
+  const SIDE_FA = { attacker: 'حمله', defender: 'دفاع' };
+  const UNIT_FA = { swordsman: 'شمشیرزن', archer: 'کماندار', cavalry: 'سواره' };
+
+  function fmtEvt(e, round) {
+    const r = `<span class="r">ر${round}</span>`;
+    const sq = (id) => id || '؟';
+    switch (e.kind) {
+      case 'move': return `${r}🚩 ${sq(e.squad)} به (${e.to.x},${e.to.y}) ${e.auto ? '(تعقیب)' : ''}`;
+      case 'strike': return `${r}⚔ ${sq(e.attacker)} → ${sq(e.target)}: ${e.kills} کشته${e.charge ? ' ⚡شارژ!' : ''}${e.volley ? ' 🎯رگبار' : ''}`;
+      case 'counter': return `${r}↩ پادحمله ${sq(e.attacker)} → ${sq(e.target)}: ${e.kills}`;
+      case 'rout': return `${r}🏳 فرار ${sq(e.squad)}!`;
+      case 'castle': return `${r}🏰 ${e.text}`;
+      case 'end': return `${r}🏆 پایان نبرد — برنده: ${SIDE_FA[e.winner] || e.winner} (${e.reason})`;
+      default: return `${r}${e.kind}`;
+    }
+  }
+
+  // ---------- rendering ----------
+  function renderStatic(view) {
+    stage.innerHTML = '';
+    rendered = GorzMap.renderMap(stage, view, { cellSize: 36, highlightSquads: true, seed: view.battleId || 0 });
+    const legendHost = $('legendHost');
+    GorzMap.renderLegend(legendHost, 'fa');
+  }
+
+  function squadsOfRound(roundIdx) {
+    // snapshot reconstruction: start from initial squads, apply rounds
+    const view = current.view;
+    if (!view) return [];
+    if (current.mode === 'live') return view.squads || [];
+    // replay: build up
+    let squads = JSON.parse(JSON.stringify(current.initialSquads || []));
+    for (let i = 0; i <= roundIdx && i < current.rounds.length; i++) {
+      applyRound(squads, current.rounds[i].events);
+    }
+    return squads;
+  }
+
+  function applyRound(squads, events) {
+    for (const e of events) {
+      if (e.kind === 'move') {
+        const s = squads.find((x) => x.id === e.squad);
+        if (s && e.to) { s.x = e.to.x; s.y = e.to.y; }
+      } else if (e.kind === 'strike') {
+        const t = squads.find((x) => x.id === e.target);
+        if (t) t.count = Math.max(0, Math.round((t.count - e.kills) * 10) / 10);
+      } else if (e.kind === 'counter') {
+        const t = squads.find((x) => x.id === e.target);
+        if (t) t.count = Math.max(0, Math.round((t.count - e.kills) * 10) / 10);
+      } else if (e.kind === 'rout') {
+        const s = squads.find((x) => x.id === e.squad);
+        if (s) s.routed = true;
+      }
+    }
+  }
+
+  function drawRound(roundIdx) {
+    if (!current) return;
+    cursorRound = roundIdx;
+    const view = current.view;
+    if (current.mode === 'replay') {
+      const squads = squadsOfRound(roundIdx);
+      // re-render squad layer only
+      stage.querySelectorAll('.layer-squads, .layer-fx').forEach((n) => n.remove());
+      const gSquads = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      gSquads.setAttribute('class', 'layer-squads');
+      for (const sq of squads) {
+        if (sq.x == null || sq.x < 0) continue;
+        const tok = mkToken(sq);
+        gSquads.appendChild(tok);
+      }
+      rendered.svg.appendChild(gSquads);
+      const gFx = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      gFx.setAttribute('class', 'layer-fx');
+      rendered.svg.appendChild(gFx);
+      rendered.gSquads = gSquads; rendered.gFx = gFx;
+      // drama: play fx of this round
+      if (roundIdx >= 0 && roundIdx < current.rounds.length) playFx(current.rounds[roundIdx].events, squads);
+    }
+    $('roundNow').textContent = roundIdx + 1;
+    updateTickerUpTo(roundIdx);
+  }
+
+  function mkToken(sq) {
+    // reuse map-svg's token via a fake render call — simplest: re-render whole map each round is cheaper to write; use manual construction here
+    const NS = 'http://www.w3.org/2000/svg';
+    const cs = rendered.cs;
+    const colors = GorzMap.UNIT_COLORS[sq.side] || GorzMap.UNIT_COLORS.attacker;
+    const px = sq.x * cs, py = sq.y * cs;
+    const cx = px + cs / 2, cy = py + cs / 2;
+    const R = cs * (sq.commander ? 0.42 : 0.36);
+    const grp = document.createElementNS(NS, 'g');
+    grp.setAttribute('class', 'squad-token');
+    grp.setAttribute('data-squad', sq.id);
+    const mk = (name, attrs) => { const n = document.createElementNS(NS, name); for (const k in attrs) n.setAttribute(k, attrs[k]); grp.appendChild(n); return n; };
+    if (sq.routed) grp.setAttribute('opacity', 0.45);
+    mk('ellipse', { cx, cy: cy + R * 0.85, rx: R * 0.8, ry: R * 0.22, fill: '#000', opacity: 0.35 });
+    mk('path', {
+      d: `M ${cx - R} ${cy - R * 0.75} h ${2 * R} v ${R * 0.9} q 0 ${R * 0.75} ${-R} ${R * 1.05} q ${-R} ${-R * 0.3} ${-R} ${-R * 1.05} Z`,
+      fill: colors.main, stroke: colors.dark, 'stroke-width': 2,
+    });
+    if (sq.routed) mk('path', { d: `M ${cx - R * 0.8} ${cy + R * 0.9} l ${R * 1.6} ${-R * 1.6}`, stroke: '#e8e2d4', 'stroke-width': 2, opacity: 0.85, 'stroke-linecap': 'round' });
+    const icon = document.createElementNS(NS, 'text');
+    icon.setAttribute('x', cx); icon.setAttribute('y', cy - R * 0.1);
+    icon.setAttribute('text-anchor', 'middle'); icon.setAttribute('dominant-baseline', 'central');
+    icon.setAttribute('font-size', R * 0.9); icon.setAttribute('fill', '#1c1710');
+    icon.textContent = GorzMap.UNIT_ICONS[sq.type] || '•';
+    grp.appendChild(icon);
+    const cnt = document.createElementNS(NS, 'text');
+    cnt.setAttribute('x', cx); cnt.setAttribute('y', cy + R * 0.62);
+    cnt.setAttribute('text-anchor', 'middle'); cnt.setAttribute('dominant-baseline', 'central');
+    cnt.setAttribute('font-size', R * 0.62); cnt.setAttribute('fill', '#f5efe2'); cnt.setAttribute('font-weight', 700);
+    cnt.textContent = String(sq.count);
+    grp.appendChild(cnt);
+    if (sq.commander) {
+      const star = document.createElementNS(NS, 'text');
+      star.setAttribute('x', cx); star.setAttribute('y', cy - R * 1.25);
+      star.setAttribute('text-anchor', 'middle'); star.setAttribute('dominant-baseline', 'central');
+      star.setAttribute('font-size', R * 0.7); star.setAttribute('fill', '#f2c14e');
+      star.textContent = '★';
+      grp.appendChild(star);
+    }
+    return grp;
+  }
+
+  // ---------- fx ----------
+  function playFx(events, squads) {
+    const cs = rendered.cs;
+    const svg = rendered.svg;
+    for (const e of events) {
+      if (e.kind === 'strike') {
+        const a = squads.find((s) => s.id === e.attacker);
+        const t = squads.find((s) => s.id === e.target);
+        if (a && t && a.x >= 0 && t.x >= 0) {
+          if (e.ranged || (a.type === 'archer')) {
+            arrowFx(svg, a.x * cs + cs / 2, a.y * cs + cs / 2, t.x * cs + cs / 2, t.y * cs + cs / 2);
+          } else {
+            flashFx(svg, t.x * cs + cs / 2, t.y * cs + cs / 2, e.charge);
+          }
+          floatDmg(t.x * cs + cs / 2, t.y * cs, e.kills);
+        }
+      } else if (e.kind === 'counter') {
+        const a = squads.find((s) => s.id === e.attacker);
+        const t = squads.find((s) => s.id === e.target);
+        if (a && t && a.x >= 0 && t.x >= 0) floatDmg(t.x * cs + cs / 2, t.y * cs, e.kills, '#d9b48a');
+      }
+    }
+  }
+
+  function arrowFx(svg, x1, y1, x2, y2) {
+    const NS = 'http://www.w3.org/2000/svg';
+    const line = document.createElementNS(NS, 'line');
+    line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+    line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+    line.setAttribute('stroke', '#f2c14e'); line.setAttribute('stroke-width', 2);
+    line.setAttribute('stroke-linecap', 'round');
+    line.setAttribute('opacity', 0.9);
+    svg.appendChild(line);
+    const len = Math.hypot(x2 - x1, y2 - y1);
+    line.animate(
+      [{ strokeDasharray: `0 ${len}` }, { strokeDasharray: `${len} 0` }],
+      { duration: 320, easing: 'ease-out' }
+    ).onfinish = () => line.remove();
+  }
+
+  function flashFx(svg, x, y, big) {
+    const NS = 'http://www.w3.org/2000/svg';
+    const c = document.createElementNS(NS, 'circle');
+    c.setAttribute('cx', x); c.setAttribute('cy', y);
+    c.setAttribute('r', big ? 8 : 5);
+    c.setAttribute('fill', big ? '#ffb347' : '#e8e2d4');
+    c.setAttribute('opacity', 0.85);
+    svg.appendChild(c);
+    c.animate([{ r: big ? 6 : 4, opacity: 0.9 }, { r: big ? 26 : 16, opacity: 0 }], { duration: 450, easing: 'ease-out' }).onfinish = () => c.remove();
+  }
+
+  function floatDmg(xPx, yTile, kills, color) {
+    const stageEl = $('stage');
+    const f = document.createElement('div');
+    f.className = 'fx-float';
+    f.textContent = '-' + kills;
+    f.style.color = color || '#ff8f6b';
+    // position relative to stage: svg is scaled to width; compute proportion
+    const rect = stageEl.getBoundingClientRect();
+    const svgRect = rendered.svg.getBoundingClientRect();
+    const scale = svgRect.width / rendered.svg.viewBox.baseVal.width;
+    f.style.left = (svgRect.left - rect.left + xPx * scale) + 'px';
+    f.style.top = (svgRect.top - rect.top + yTile * scale) + 'px';
+    stageEl.appendChild(f);
+    setTimeout(() => f.remove(), 1200);
+  }
+
+  // ---------- ticker ----------
+  function updateTickerUpTo(roundIdx) {
+    if (!current || current.mode !== 'replay') return;
+    const host = $('ticker');
+    host.innerHTML = '';
+    for (let i = 0; i <= roundIdx && i < current.rounds.length; i++) {
+      const rd = current.rounds[i];
+      for (const e of rd.events) {
+        const div = document.createElement('div');
+        div.className = 'evt ' + e.kind;
+        div.innerHTML = fmtEvt(e, rd.round);
+        host.appendChild(div);
+      }
+    }
+    host.scrollTop = host.scrollHeight;
+  }
+
+  // ---------- playback ----------
+  function stopPlay() { if (playTimer) { clearInterval(playTimer); playTimer = null; $('btnPlay').textContent = '▶ پخش'; } }
+
+  function startPlay() {
+    if (!current || current.mode !== 'replay') return;
+    stopPlay();
+    $('btnPlay').textContent = '⏸ توقف';
+    playTimer = setInterval(() => {
+      if (cursorRound + 1 >= current.rounds.length) { stopPlay(); return; }
+      drawRound(cursorRound + 1);
+    }, 1600);
+  }
+
+  // ---------- castle chips ----------
+  function renderCastles(objs) {
+    const row = $('castlesRow');
+    row.innerHTML = '';
+    if (!objs || !objs.castles) return;
+    const fa = { westHome: 'قلعه باختر', eastHome: 'قلعه خاور', northKeep: 'دژ شمال', southKeep: 'دژ جنوب' };
+    for (const [key, owner] of Object.entries(objs.castles)) {
+      const chip = document.createElement('div');
+      chip.className = 'castle-chip ' + (owner === 'attacker' ? 'att' : owner === 'defender' ? 'def' : '');
+      chip.innerHTML = `<span class="dot"></span>${fa[key] || key} — ${owner ? SIDE_FA[owner] : 'بی‌طرف'}`;
+      row.appendChild(chip);
+    }
+  }
+
+  // ---------- loaders ----------
+  async function loadLive(battleId) {
+    const r = await fetch('/api/watch/' + battleId);
+    const data = await r.json();
+    if (!data.ok) return alert(data.error || 'خطا');
+    stopPlay();
+    current = {
+      mode: 'live', battleId, view: data.view,
+      rounds: [], initialSquads: null,
+      meta: data.battle,
+    };
+    renderStatic(data.view);
+    $('matchup').textContent = `${data.battle.attacker} ⚔ ${data.battle.defender}`;
+    $('stateBadge').textContent = '🔴 زنده — راند ' + data.battle.round;
+    $('stateBadge').className = 'badge live';
+    $('controls').hidden = true;
+    $('hud').hidden = false;
+    $('tickerWrap').hidden = true;
+    $('roundMax').textContent = data.view.maxRounds;
+    updateHud(data.view);
+    renderCastles(data.view.objectives);
+  }
+
+  async function loadReplay(battleId) {
+    const r = await fetch('/api/watch/' + battleId);
+    const data = await r.json();
+    if (!data.ok) return alert(data.error || 'خطا');
+    stopPlay();
+    const v = data.view;
+    // initial squads: server derives them from the log (initialSquads) or
+    // falls back to the v3 initial block
+    let initialSquads = v.initialSquads || [];
+    if (!initialSquads.length && v.initial && v.initial.attacker) {
+      for (const side of ['attacker', 'defender']) {
+        for (const s of (v.initial[side].squads || [])) initialSquads.push({ ...s, side, x: s.x, y: s.y, count: Math.round(s.count) });
+      }
+    }
+    current = {
+      mode: 'replay', battleId, view: v, rounds: v.rounds || [],
+      initialSquads, meta: data.battle,
+    };
+    // static base needs terrain; v2 logs carry terrain in log_json
+    let terrain = v.terrain;
+    if (!terrain && v.initial && v.initial.terrain) terrain = v.initial.terrain;
+    if (!terrain) {
+      // fallback: regenerate the v3 map client-side? not available — show notice
+      stage.innerHTML = '<div class="empty">این نبرد قدیمی است و نقشهٔ آن ذخیره نشده. فقط رویدادها قابل نمایش است.</div>';
+    } else {
+      renderStatic({ grid: v.grid, terrain, castles: v.castles || {}, squads: [] });
+    }
+    $('matchup').textContent = `${data.battle.attacker} ⚔ ${data.battle.defender}`;
+    $('stateBadge').textContent = '🎬 پخش نبرد';
+    $('stateBadge').className = 'badge';
+    $('controls').hidden = false;
+    $('hud').hidden = false;
+    $('tickerWrap').hidden = false;
+    $('roundMax').textContent = v.rounds ? v.rounds.length : 0;
+    if (initialSquads.length) { cursorRound = -1; drawRound(-1); }
+    updateHudFinal(v.winner);
+    renderCastles(null);
+  }
+
+  function updateHud(view) {
+    if (!view || !view.powerFrac) return;
+    const a = Math.round((view.powerFrac.attacker || 1) * 100);
+    const d = Math.round((view.powerFrac.defender || 1) * 100);
+    $('powA').textContent = a + '%'; $('powD').textContent = d + '%';
+    $('barA').style.width = a + '%'; $('barD').style.width = d + '%';
+  }
+  function updateHudFinal(winner) {
+    $('powA').textContent = winner === 'attacker' ? '🏆 برنده' : winner ? 'باخت' : 'مساوی';
+    $('powD').textContent = winner === 'defender' ? '🏆 برنده' : winner ? 'باخت' : 'مساوی';
+  }
+
+  // ---------- battle list ----------
+  async function loadPicker() {
+    const r = await fetch('/api/watch/list');
+    const data = await r.json();
+    const host = $('picker');
+    host.innerHTML = '';
+    if (!data.ok || !data.battles.length) {
+      host.innerHTML = '<span class="empty">هنوز نبردی ثبت نشده.</span>';
+      return;
+    }
+    for (const b of data.battles.slice(0, 8)) {
+      const btn = document.createElement('button');
+      const state = b.state === 'running' ? '🔴 زنده' : b.state === 'open' ? '⏳ در انتظار' : '🎬 ' + (b.round || '?') + ' راند';
+      btn.textContent = `نبرد #${b.id} — ${b.attacker} ضد ${b.defender} (${state})`;
+      btn.onclick = () => (b.state === 'finished' ? loadReplay(b.id) : loadLive(b.id));
+      host.appendChild(btn);
+    }
+  }
+
+  // ---------- controls ----------
+  $('btnPlay').onclick = () => (playTimer ? stopPlay() : startPlay());
+  $('btnNext').onclick = () => current && cursorRound + 1 < current.rounds.length && drawRound(cursorRound + 1);
+  $('btnPrev').onclick = () => current && cursorRound >= 0 && drawRound(cursorRound - 1);
+
+  // ---------- live updates via socket ----------
+  try {
+    const socket = io();
+    socket.on('battle:round', (p) => {
+      if (current && current.mode === 'live' && p && p.battleId === current.battleId) {
+        loadLive(current.battleId);
+      }
+    });
+    socket.on('battle:finished', (p) => {
+      if (current && current.mode === 'live' && p && p.battleId === current.battleId) {
+        loadPicker();
+      }
+    });
+  } catch (e) { /* socket optional */ }
+
+  // ---------- boot: auto-attach to newest battle ----------
+  (async function boot() {
+    await loadPicker();
+    const r = await fetch('/api/watch/list');
+    const data = await r.json();
+    if (data.ok && data.battles.length) {
+      const live = data.battles.find((b) => b.state === 'running');
+      const pick = live || data.battles[0];
+      if (pick.state === 'finished') loadReplay(pick.id); else loadLive(pick.id);
+    }
+  })();
+})();
+</script>
+</body>
+</html>

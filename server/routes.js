@@ -200,6 +200,63 @@ router.get('/battle/current', requireAuth, wrap((req, res) => {
 }));
 // BATTLE-ROUTES-END
 
+// ---------------- spectator / viewer API (no auth) ----------------
+// Public endpoints for the /watch.html theater. Reveal NO hidden info
+// beyond what a broadcast would show: both armies are visible (like a
+// stadium screen), morale fuzzed for non-participants.
+router.get('/watch/list', wrap((req, res) => {
+  const rows = db.prepare(
+    "SELECT id, state, log_json, winner_id, attacker_id, defender_id, created_at FROM battles WHERE state IN ('running','open','finished') ORDER BY id DESC LIMIT 20"
+  ).all();
+  const names = (id) => {
+    const u = db.prepare('SELECT email FROM users WHERE id = ?').get(id);
+    return u ? String(u.email).split('@')[0] : `#${id}`;
+  };
+  const roundOf = (r) => {
+    if (r.state !== 'finished' || !r.log_json) return null;
+    try {
+      const log = JSON.parse(r.log_json);
+      if (Array.isArray(log)) return log.length ? log[log.length - 1].round : null;
+      if (log && typeof log === 'object') return log.rounds != null ? log.rounds : null;
+      return null;
+    } catch { return null; }
+  };
+  res.json({
+    ok: true,
+    battles: rows.map((r) => ({
+      id: r.id, state: r.state, round: roundOf(r),
+      winner: r.winner_id === r.attacker_id ? 'attacker' : r.winner_id === r.defender_id ? 'defender' : null,
+      attacker: names(r.attacker_id), defender: names(r.defender_id),
+      created_at: r.created_at,
+    })),
+  });
+}));
+
+router.get('/watch/:id', wrap((req, res) => {
+  const row = db.prepare('SELECT * FROM battles WHERE id = ?').get(Number(req.params.id));
+  if (!row) throw new GameError(404, 'نبرد یافت نشد.');
+  const username = (id) => {
+    const u = db.prepare('SELECT email FROM users WHERE id = ?').get(id);
+    return u ? String(u.email).split('@')[0] : `#${id}`;
+  };
+  if (row.state === 'running') {
+    const live = battles.loadLiveForViewer(row.id);
+    if (!live) throw new GameError(500, 'وضعیت نبرد خراب است.');
+    return res.json({
+      ok: true,
+      battle: { id: row.id, state: 'running', round: live.state.round, attacker: username(row.attacker_id), defender: username(row.defender_id) },
+      view: battles.getViewerProjection(live.state),
+    });
+  }
+  // finished: replay from log_json
+  const view = battles.getViewerReplay(row);
+  res.json({
+    ok: true,
+    battle: { id: row.id, state: 'finished', winner: row.winner, attacker: username(row.attacker_id), defender: username(row.defender_id) },
+    view,
+  });
+}));
+
 // ---------------- health ----------------
 router.get('/health', (req, res) => {
   res.json({ ok: true, name: 'gorz-reborn', status: 'running' });

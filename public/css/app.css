@@ -1214,3 +1214,33 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 
 .tac-log-details summary { cursor: pointer; color: var(--accent-strong); font-size: 13.5px; }
 .tac-log-details { margin-top: 6px; }
 .battle-actions { display: flex; gap: 10px; }
+
+/* ===================== v3: watch button + agent quickstart ===================== */
+.watch-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  margin-top: 18px; padding: 14px 18px;
+  background: linear-gradient(180deg, var(--accent-soft), transparent);
+  border: 1.5px solid var(--accent);
+  border-radius: 14px; text-decoration: none;
+  color: var(--accent-strong); font-size: 19px; font-weight: 700;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.watch-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 24px var(--accent-soft); }
+.watch-btn .watch-sub { font-size: 12px; font-weight: 400; color: var(--text-dim); }
+
+.agent-quickstart {
+  margin-top: 40px; max-width: 1060px; margin-inline: auto;
+  background: rgba(0,0,0,0.25); border: 1px solid var(--line);
+  border-radius: 14px; padding: 18px 22px;
+  position: relative; z-index: 1;
+}
+.agent-quickstart h3 { font-size: 15px; color: var(--accent-strong); margin-bottom: 8px; }
+.agent-quickstart p { font-size: 13px; color: var(--text-dim); margin-bottom: 8px; }
+.agent-quickstart pre {
+  background: var(--bg-deep, #101216); border: 1px solid var(--line); border-radius: 10px;
+  padding: 12px 16px; font-size: 12px; line-height: 1.8; overflow-x: auto;
+  color: #cfe3b8; margin-bottom: 8px;
+}
+.agent-quickstart code { background: var(--bg-deep, #101216); padding: 1px 6px; border-radius: 5px; color: var(--accent-strong); font-size: 12px; }
+.agent-quickstart .agent-links { font-size: 12.5px; }
+.agent-quickstart .agent-links a { color: var(--accent-strong); text-decoration: none; margin-inline-end: 6px; }

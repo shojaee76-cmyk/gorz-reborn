@@ -20,6 +20,7 @@
 // ============================================================
 
 const { SOLDIERS, TACTICS } = require('./balance');
+const { generateV3Map, TERRAIN_RULES, V3 } = require('./mapgen');
 
 // Fail loudly at boot if a balance knob goes missing (silent NaNs are
 // far worse than an early crash).
@@ -31,12 +32,29 @@ for (const key of [
   'killK', 'killC', 'counterMelee', 'counterAdjacentRanged',
   'moraleHitPerFraction', 'routMoraleThreshold', 'routChancePerPoint',
   'routThreshold', 'decisiveRatio', 'units',
-  'lakeCount', 'mountainCount', 'ruinsCount', 'keepCount',
   'keepDefBonus', 'keepHoldAtkBonus', 'keepCaptureRadius',
+  'terrainCfg', 'siegeRoundsToWin', 'castlePoints', 'powerPoints',
 ]) {
   if (TACTICS[key] === undefined) {
     throw new Error(`[tactics] missing balance knob: TACTICS.${key}`);
   }
+}
+
+// ---------------- v3 terrain rule helpers -----------------------
+// cfg(tile) → {cost, defBonus, atkBonus, charge, passable}
+function tileCfg(state, x, y) {
+  const t = (state.terrain[y] && state.terrain[y][x]) || 'plain';
+  return TACTICS.terrainCfg[t] || TACTICS.terrainCfg.plain;
+}
+function terrainOfXY(state, x, y) {
+  return (state.terrain[y] && state.terrain[y][x]) || 'plain';
+}
+function passable(state, x, y) {
+  const c = tileCfg(state, x, y);
+  return !!c.passable;
+}
+function stepCost(state, x, y) {
+  return tileCfg(state, x, y).cost;
 }
 
 // ---------------- deterministic RNG (seeded per battle) --------
@@ -131,119 +149,82 @@ function centerOut(w) {
   return order.slice(0, w);
 }
 
-// Deploy squads: melee front row, ranged behind. Sides start 4 rows
-// apart so there's a real approach phase (archer volleys, cavalry
-// flanks) before the lines clash.
+// v3 deploy: attacker = WEST (home castle at x=1), defender = EAST
+// (home castle at x=19). Squads spawn on safe plains beside their home
+// castle; defender spawns are the exact point-mirrors of the attacker's.
+// Biggest corps deploy front-most (closest to the river).
+const V3_SPAWN_ATT = [ { x: 1, y: 5 }, { x: 1, y: 9 }, { x: 0, y: 5 }, { x: 0, y: 9 } ];
+
 function deploy(gridW, gridH, sideObj, sideName, prefix) {
-  const cols = centerOut(gridW);
-  const melee = sideObj.squads.filter((s) => s.role === 'melee');
-  const ranged = sideObj.squads.filter((s) => s.role === 'ranged');
-  const frontRow = sideName === 'attacker' ? gridH - 2 : 1;
-  const backRow = sideName === 'attacker' ? gridH - 1 : 0;
+  const isAtt = sideName === 'attacker';
+  // melee first (front), then ranged; biggest corps first within each
+  const order = [...sideObj.squads].sort((a, b) => {
+    const r = (b.role === 'melee' ? 1 : 0) - (a.role === 'melee' ? 1 : 0);
+    return r !== 0 ? r : b.count - a.count;
+  });
   let n = 0;
-  for (const s of [...melee, ...ranged]) s.id = `${prefix}${++n}`;
-  let cx = 0;
-  for (const s of melee) {
-    s.y = frontRow;
-    s.x = cols[cx++ % cols.length];
-  }
-  for (const s of ranged) {
-    s.y = backRow;
-    s.x = cols[cx++ % cols.length];
-  }
-}
-
-// ---------------- landmarks & objectives -------------------------
-// Scatter impassable obstacles (lakes / mountains / ruins) away from
-// the two home rows and the central contest band, plus neutral keeps
-// in the open middle that a squad captures by standing on them.
-function makeLandmarks(w, h, rng) {
-  const occupied = (set, x, y) => set.has(y * w + x);
-  const mark = (set, x, y) => set.add(y * w + x);
-  const inHome = (y) => y <= 1 || y >= h - 2;     // keep spawns clear
-  const inBand = (y) => y >= 4 && y <= h - 5;       // central contest band
-  const obstacles = [];
-  const keeps = [];
-  const taken = new Set();
-
-  const place = (kind, count, allowBand) => {
-    let guard = 0;
-    while (obstacles.filter((o) => o.kind === kind).length < count && guard++ < 400) {
-      const x = 1 + Math.floor(rng() * (w - 2));
-      const y = 1 + Math.floor(rng() * (h - 2));
-      if (inHome(y)) continue;
-      if (occupied(taken, x, y)) continue;
-      mark(taken, x, y);
-      obstacles.push({ kind, x, y });
+  for (const s of order) s.id = `${prefix}${++n}`;
+  order.forEach((s, i) => {
+    const src = V3_SPAWN_ATT[i % V3_SPAWN_ATT.length];
+    if (isAtt) {
+      s.x = src.x; s.y = src.y;
+    } else {
+      // point mirror (180° rotation) of the attacker slot
+      s.x = gridW - 1 - src.x; s.y = gridH - 1 - src.y;
     }
-  };
+  });
+}
 
-  place('lake', TACTICS.lakeCount, false);
-  place('mountain', TACTICS.mountainCount, false);
-  place('ruins', TACTICS.ruinsCount, false);
+// ---------------- landmarks & objectives (v3) ---------------------
+// v3: the map comes from mapgen.js — castles ARE the objectives.
+// state.castles = { westHome, eastHome, northKeep, southKeep }
+// each { x, y, owner: 'attacker'|'defender'|null, kind, name }.
+// Back-compat: state.keeps is derived from castles so v2 code paths
+// (brain.js, captureKeeps) keep working unmodified.
 
-  // Keeps live in the open middle band, spread across columns.
-  const cols = [];
-  for (let x = 2; x < w - 2; x += Math.max(3, Math.floor((w - 4) / TACTICS.keepCount))) cols.push(x);
-  let ki = 0;
-  let guard = 0;
-  while (keeps.length < TACTICS.keepCount && guard++ < 400) {
-    const cx = cols[ki % cols.length];
-    const jitter = Math.floor((rng() - 0.5) * 3);
-    const x = Math.min(w - 2, Math.max(2, cx + jitter));
-    const y = 5 + Math.floor(rng() * (h - 10)); // middle band
-    if (!inBand(y)) continue;
-    if (occupied(taken, x, y)) { ki++; continue; }
-    mark(taken, x, y);
-    keeps.push({ x, y, owner: null, name: `قلعه ${keeps.length + 1}` });
-    ki++;
+function castleAt(state, x, y) {
+  for (const key of Object.keys(state.castles)) {
+    const c = state.castles[key];
+    if (c.x === x && c.y === y) return { key, ...c };
   }
-
-  return { obstacles, keeps };
+  return null;
 }
 
-function obstacleAt(state, x, y) {
-  return state.obstacles.find((o) => o.x === x && o.y === y) || null;
-}
-function keepOwnerOf(state, side) {
-  return state.keeps.filter((k) => k.owner === side).length;
-}
-
-function keepAt(state, x, y) {
-  return state.keeps.find((k) => k.x === x && k.y === y) || null;
-}
-
-// A squad standing ON a keep tile captures it for its side. A keep with
-// no occupant keeps its last owner (contested keeps stay held). Recomputes
-// each squad's `onKeep` flag so combat can apply the fort bonus.
+// A squad standing ON a castle tile captures it for its side (keeps flip
+// to the occupant; capitals flip too — and if it's the ENEMY capital the
+// game ends in evaluation). Recomputes each squad's onCastle/onKeep flags.
 function captureKeeps(state) {
-  for (const k of state.keeps) {
-    const occ = state.all.find((s) => !s.routed && s.x === k.x && s.y === k.y);
-    if (occ) k.owner = occ.side;
+  for (const key of Object.keys(state.castles)) {
+    const c = state.castles[key];
+    const occ = state.all.find((s) => !s.routed && s.x === c.x && s.y === c.y);
+    if (occ) {
+      if (c.owner !== occ.side) {
+        c.owner = occ.side;
+        c.capturedRound = state.round;
+      }
+    }
   }
   for (const s of state.all) {
-    const k = keepAt(state, s.x, s.y);
-    s.onKeep = !!k && k.owner === s.side;
+    const c = castleAt(state, s.x, s.y);
+    s.onCastle = !!c;
+    s.onOwnCastle = !!c && c.owner === s.side;
+    s.onKeep = !!c && c.kind === 'keep' && c.owner === s.side;
   }
-  // objective scoreboard (for tie-breaks / HUD)
+  // objective scoreboard (for HUD / tie-breaks)
+  const keys = Object.keys(state.castles);
   state.objectives = {
-    attacker: keepOwnerOf(state, 'attacker'),
-    defender: keepOwnerOf(state, 'defender'),
-    neutral: state.keeps.length - keepOwnerOf(state, 'attacker') - keepOwnerOf(state, 'defender'),
+    attacker: keys.filter((k) => state.castles[k].owner === 'attacker').length,
+    defender: keys.filter((k) => state.castles[k].owner === 'defender').length,
+    neutral: keys.filter((k) => state.castles[k].owner === null).length,
+    castles: Object.fromEntries(keys.map((k) => [k, state.castles[k].owner])),
   };
 }
 
 function makeTerrain(w, h, rng) {
-  const t = [];
-  for (let y = 0; y < h; y++) {
-    const row = [];
-    for (let x = 0; x < w; x++) {
-      const r = rng();
-      row.push(r < TACTICS.forestChance ? 'forest' : r < TACTICS.forestChance + TACTICS.hillChance ? 'hill' : 'plain');
-    }
-    t.push(row);
-  }
-  return t;
+  // v3: terrain comes fully from mapgen (deterministic, symmetric).
+  // rng is ignored; kept for signature compatibility.
+  const { grid } = generateV3Map(w * 131 + h * 17);
+  return grid;
 }
 
 // ---------------- helpers ---------------------------------------
@@ -254,7 +235,7 @@ function squadAt(state, x, y) {
 }
 
 function terrainOf(state, sq) {
-  return (state.terrain[sq.y] && state.terrain[sq.y][sq.x]) || 'plain';
+  return terrainOfXY(state, sq.x, sq.y);
 }
 
 function stanceMods(stance) {
@@ -273,7 +254,8 @@ function sideSquads(state, side) {
 
 function squadPower(state, sq) {
   const t = terrainOf(state, sq);
-  const terrAtk = t === 'hill' ? 1 + TACTICS.hillAtkBonus : 1;
+  const cfg = TACTICS.terrainCfg[t] || TACTICS.terrainCfg.plain;
+  const terrAtk = 1 + (cfg.atkBonus || 0);
   return sq.unitAtk * sq.count * sq.heroMult * terrAtk;
 }
 
@@ -294,11 +276,12 @@ function validateOrders(state, side, orders) {
     if (['advance', 'hold', 'assault'].includes(o.stance)) entry.stance = o.stance;
     if (o.move && Number.isInteger(o.move.x) && Number.isInteger(o.move.y)) {
       const { x, y } = o.move;
-      // Any in-bounds, unoccupied destination is legal; the movement
-      // phase walks at most MP steps toward it. (Capping the ORDER
-      // distance at MP would make flanking/long marches impossible.)
+      // Any in-bounds, unoccupied, PASSABLE destination is legal; the
+      // movement phase walks at most MP points toward it, paying terrain
+      // costs per tile (jungle = 2). Impassable tiles (water, mountain)
+      // reject the order outright.
       const occ = squadAt(state, x, y);
-      if (occ || obstacleAt(state, x, y)) continue; // occupied or impassable
+      if (occ || !passable(state, x, y)) continue;
       if (entry.stance !== 'hold') {
         entry.move = { x, y };
       }
@@ -313,8 +296,10 @@ function validateOrders(state, side, orders) {
 }
 
 // ---------------- movement --------------------------------------
-// Greedy orthogonal stepping toward destination; blocked cells stop
-// the walk early. Cavalry (mp 2) executes before everyone else.
+// Greedy stepping toward destination paying terrain cost per tile;
+// impassable tiles block the walk (rivers can only be crossed on
+// bridges — this is the v3 chokepoint rule). Cavalry (mp 2) executes
+// before everyone else.
 function stepToward(state, sq, tx, ty) {
   const options = [];
   const dx = Math.sign(tx - sq.x);
@@ -327,8 +312,9 @@ function stepToward(state, sq, tx, ty) {
   );
   for (const opt of options) {
     if (opt.x < 0 || opt.x >= state.grid.w || opt.y < 0 || opt.y >= state.grid.h) continue;
-    if (obstacleAt(state, opt.x, opt.y)) continue;
-    if (!squadAt(state, opt.x, opt.y)) return opt;
+    if (!passable(state, opt.x, opt.y)) continue;   // water/mountain stop the walk
+    if (squadAt(state, opt.x, opt.y)) continue;
+    return opt;
   }
   return null;
 }
@@ -366,23 +352,40 @@ function runMovement(state, orders) {
     }
     if (!dest) continue;
 
+    let budget = sq.mp;   // MP points; terrain cost is deducted per tile
     let moved = 0;
     const from = { x: sq.x, y: sq.y };
-    while (moved < sq.mp) {
+    let path = [];
+    let guard = 0;
+    while (budget > 0 && guard++ < 12) {
       const nxt = stepToward(state, sq, dest.x, dest.y);
       if (!nxt) break;
+      const cost = stepCost(state, nxt.x, nxt.y);
+      if (cost > budget) break;      // e.g. jungle (2) with 1 MP left
       sq.x = nxt.x;
       sq.y = nxt.y;
+      budget -= cost;
       moved++;
+      path.push({ x: nxt.x, y: nxt.y });
     }
     if (moved > 0) {
+      // v3 charge rules: charging needs a real gallop (2+ tiles of open
+      // ground this round) and the LANDING tile must allow it (forest /
+      // jungle / castle deny; plains, hills and bridges allow).
+      const terrNow = terrainOf(state, sq);
+      const cfg = TACTICS.terrainCfg[terrNow] || TACTICS.terrainCfg.plain;
+      const openRun = path.every((p) => {
+        const c = TACTICS.terrainCfg[terrainOfXY(state, p.x, p.y)] || TACTICS.terrainCfg.plain;
+        return c.charge;
+      });
       sq.chargeReady =
         sq.type === 'cavalry' &&
         moved >= 2 &&
-        terrainOf(state, sq) !== 'forest';
+        openRun &&
+        cfg.charge;
       events.push({
         kind: 'move', squad: sq.id, side: sq.side, type: sq.type,
-        from, to: { x: sq.x, y: sq.y }, auto,
+        from, to: { x: sq.x, y: sq.y }, path, auto,
       });
     }
   }
@@ -399,10 +402,14 @@ function computeStrike(state, atkSq, defSq, opts) {
   const do_ = orders_.for(defSq.side, defSq.id);
   const aStance = stanceMods(ao ? ao.stance : 'advance');
   const dStance = stanceMods(do_ ? do_.stance : 'advance');
-  const atkTerrMod = atkTerr === 'hill' ? 1 + TACTICS.hillAtkBonus : 1;
-  const defTerrMod = defTerr === 'forest' ? 1 + TACTICS.forestDefBonus : 1;
-  const atkKeepMod = atkSq.onKeep ? 1 + TACTICS.keepHoldAtkBonus : 1;
-  const defKeepMod = defSq.onKeep ? 1 + TACTICS.keepDefBonus : 1;
+  const atkCfg = TACTICS.terrainCfg[atkTerr] || TACTICS.terrainCfg.plain;
+  const defCfg = TACTICS.terrainCfg[defTerr] || TACTICS.terrainCfg.plain;
+  const atkTerrMod = 1 + (atkCfg.atkBonus || 0);
+  const defTerrMod = 1 + (defCfg.defBonus || 0);
+  // castle fort bonus: only the OWNER of the castle gets it (storming
+  // troops on an enemy castle tile do not benefit from its walls)
+  const atkKeepMod = atkSq.onOwnCastle ? 1 + TACTICS.keepHoldAtkBonus : 1;
+  const defKeepMod = defSq.onOwnCastle ? 1 + TACTICS.keepDefBonus : 1;
 
   let atkScore =
     atkSq.unitAtk * atkSq.count * atkSq.heroMult * aStance.atk * atkTerrMod * atkKeepMod;
@@ -534,19 +541,60 @@ function runMorale(state) {
 }
 
 // ---------------- outcome ----------------------------------------
+// v3 win conditions, checked in order (DESIGN-v3 §3):
+//   1. Capital falls — an enemy of the castle's ORIGINAL owner ends up
+//      standing on a home castle tile.
+//   2. Army destroyed — no unrouted squads left.
+//   3. Siege — a side holds BOTH neutral keeps for siegeRoundsToWin
+//      consecutive rounds.
+//   4. Round cap — score decides (castles owned + surviving power).
 function evaluateOutcome(state) {
   const aActive = sideSquads(state, 'attacker');
   const dActive = sideSquads(state, 'defender');
+
+  // 1. capital fall: occupant whose side differs from the ORIGINAL owner
+  for (const key of ['westHome', 'eastHome']) {
+    const c = state.castles[key];
+    if (!c || !c.startOwner) continue;
+    const occ = state.all.find(
+      (s) => !s.routed && s.x === c.x && s.y === c.y && s.side !== c.startOwner
+    );
+    if (occ) {
+      return {
+        over: true,
+        winner: occ.side,
+        reason: key === 'westHome' ? 'قلعه باختر سقوط کرد' : 'قلعه خاور سقوط کرد',
+        detail: `${c.name} captured by ${occ.side}`,
+      };
+    }
+  }
+
+  // 2. annihilation
   if (!aActive.length && !dActive.length) return { over: true, winner: 'draw', reason: 'annihilation' };
   if (!dActive.length) return { over: true, winner: 'attacker', reason: 'enemy destroyed' };
   if (!aActive.length) return { over: true, winner: 'defender', reason: 'enemy destroyed' };
 
+  // 3. siege: hold BOTH neutral keeps for N consecutive rounds
+  const keeps = ['northKeep', 'southKeep'];
+  const holdsBoth = (side) => keeps.every((k) => state.castles[k].owner === side);
+  state.siegeCounter = state.siegeCounter || { attacker: 0, defender: 0 };
+  for (const side of ['attacker', 'defender']) {
+    if (holdsBoth(side)) {
+      state.siegeCounter[side] += 1;
+      if (state.siegeCounter[side] >= TACTICS.siegeRoundsToWin) {
+        return { over: true, winner: side, reason: 'تسلط بر دژها', detail: 'held both keeps for ' + TACTICS.siegeRoundsToWin + ' rounds' };
+      }
+    } else {
+      state.siegeCounter[side] = 0;
+    }
+  }
+
+  // 4. collapse thresholds (from v2, still the main battle ender)
   const aFrac = sidePower(state, 'attacker') / Math.max(state.attacker.startPower, 1);
   const dFrac = sidePower(state, 'defender') / Math.max(state.defender.startPower, 1);
   const aLow = aFrac < TACTICS.routThreshold;
   const dLow = dFrac < TACTICS.routThreshold;
   if (aLow && dLow) {
-    // both collapse the same round -> stronger remainder wins
     if (aFrac !== dFrac) {
       return {
         over: true,
@@ -554,19 +602,23 @@ function evaluateOutcome(state) {
         reason: 'mutual collapse',
       };
     }
-    // dead even on power -> objective (keeps held) decides
-    const ak = state.keeps.filter((k) => k.owner === 'attacker').length;
-    const dk = state.keeps.filter((k) => k.owner === 'defender').length;
-    if (ak !== dk) {
-      return { over: true, winner: ak > dk ? 'attacker' : 'defender', reason: 'holds more keeps' };
-    }
+    // dead even on power -> objectives decide
     return { over: true, winner: 'draw', reason: 'mutual collapse' };
   }
   if (aLow) return { over: true, winner: 'defender', reason: 'army routed' };
   if (dLow) return { over: true, winner: 'attacker', reason: 'army routed' };
+
+  // 5. round cap -> score
   if (state.round >= TACTICS.maxRounds) {
-    if (aFrac >= dFrac * TACTICS.decisiveRatio) return { over: true, winner: 'attacker', reason: 'decisive on points' };
-    if (dFrac >= aFrac * TACTICS.decisiveRatio) return { over: true, winner: 'defender', reason: 'decisive on points' };
+    const score = (side) => {
+      const owned = Object.values(state.castles).filter((c) => c.owner === side).length;
+      const frac = side === 'attacker' ? aFrac : dFrac;
+      return owned * TACTICS.castlePoints + frac * TACTICS.powerPoints;
+    };
+    const as = score('attacker');
+    const ds = score('defender');
+    if (as > ds) return { over: true, winner: 'attacker', reason: 'decisive on points', detail: `score ${Math.round(as)} vs ${Math.round(ds)}` };
+    if (ds > as) return { over: true, winner: 'defender', reason: 'decisive on points', detail: `score ${Math.round(ds)} vs ${Math.round(as)}` };
     return { over: true, winner: 'draw', reason: 'exhausted' };
   }
   return { over: false };
@@ -576,6 +628,10 @@ function evaluateOutcome(state) {
 // ordersBySide: { attacker: cleanOrders, defender: cleanOrders }
 // Mutates state; returns { events, outcome }.
 function resolveRound(state, ordersBySide) {
+  // hard stop: a finished battle cannot resolve further rounds
+  if (state.status !== 'running') {
+    return { events: [], outcome: { over: true, winner: state.winner, reason: 'already finished' } };
+  }
   orders_.map = ordersBySide;
   const events = [];
   state.round += 1;
@@ -584,6 +640,9 @@ function resolveRound(state, ordersBySide) {
   events.push(...runMorale(state));
   const outcome = evaluateOutcome(state);
   if (outcome.over) {
+    state.status = 'finished';
+    state.winner = outcome.winner;
+    state.endReason = outcome.reason;
     events.push({ kind: 'end', winner: outcome.winner, reason: outcome.reason });
   }
   // record the round for replays + the final log document
@@ -593,44 +652,19 @@ function resolveRound(state, ordersBySide) {
 }
 
 // ---------------- AI commander ------------------------------------
-// Sane defaults: infantry presses the nearest threat, archers hold and
-// plink, cavalry dives the juiciest (lowest-def) target.
-function aiOrders(state, side) {
-  const orders = {};
-  const foes = livingEnemies(state, side);
-  for (const sq of sideSquads(state, side)) {
-    const o = { move: null, focus: null, stance: 'advance' };
-    if (!foes.length) { orders[sq.id] = o; continue; }
-    const near = foes
-      .map((f) => ({ f, d: manhattan(f.x, f.y, sq.x, sq.y) }))
-      .sort((a, b) => a.d - b.d)[0];
-
-    if (sq.range > 1) {
-      // archers: stand ground, focus nearest
-      o.stance = 'hold';
-      if (near.d <= sq.range) o.focus = near.f.id;
-    } else if (sq.type === 'cavalry') {
-      // cavalry: dive the lowest-defense enemy in reach
-      const prey = foes
-        .slice()
-        .sort((a, b) => a.unitDef * a.count - b.unitDef * b.count)[0];
-      const d = manhattan(prey.x, prey.y, sq.x, sq.y);
-      if (d > 1) o.move = { x: prey.x, y: prey.y }; // charge distance; mp caps actual steps
-      o.focus = prey.id;
-      o.stance = 'assault';
-    } else {
-      // infantry: close distance, hold once engaged
-      if (near.d > 1) {
-        // order the far destination; movement walks up to MP steps/round
-        o.move = { x: near.f.x, y: near.f.y };
-        o.stance = 'advance';
-      } else {
-        o.stance = 'hold';
-      }
-    }
-    orders[sq.id] = o;
+// v3: bridge-aware. Melee/cavalry route to the NEAREST BRIDGE when the
+// target is across the river (greedy orthogonal stepping can't path
+// around water on its own). Archers hold and plink.
+function nearestBridgeY(state, fromX, fromY) {
+  let best = null, bestD = Infinity;
+  for (const by of V3.BRIDGES) {
+    const d = Math.abs(by - fromY) + Math.abs(V3.RIVER_X - fromX);
+    if (d < bestD) { bestD = d; best = by; }
   }
-  return orders;
+  return best;
+}
+function acrossRiver(state, squad, target) {
+  return (squad.x - V3.RIVER_X) * (target.x - V3.RIVER_X) < 0;
 }
 
 // One-step move toward (tx,ty) that is legal & free (used by AI).
@@ -653,21 +687,82 @@ function nearestFreeStep(state, sq, tx, ty) {
   return cand[0];
 }
 
+function aiOrders(state, side) {
+  const orders = {};
+  const foes = livingEnemies(state, side);
+  for (const sq of sideSquads(state, side)) {
+    const o = { move: null, focus: null, stance: 'advance' };
+    if (!foes.length) { orders[sq.id] = o; continue; }
+    const near = foes
+      .map((f) => ({ f, d: manhattan(f.x, f.y, sq.x, sq.y) }))
+      .sort((a, b) => a.d - b.d)[0];
+
+    if (sq.range > 1) {
+      // archers: stand ground, focus nearest in range
+      o.stance = 'hold';
+      if (near.d <= sq.range) o.focus = near.f.id;
+      else if (near.d <= sq.range + 3) {
+        // creep toward range but stay on our bank
+        const tx = near.f.x - Math.sign(near.f.x - sq.x) * (sq.range - 1);
+        o.move = { x: Math.max(0, Math.min(state.grid.w - 1, tx)), y: near.f.y };
+        o.stance = 'advance';
+      }
+    } else if (sq.type === 'cavalry') {
+      // cavalry: dive the lowest-defense enemy in reach
+      const prey = foes
+        .slice()
+        .sort((a, b) => a.unitDef * a.count - b.unitDef * b.count)[0];
+      let tx = prey.x, ty = prey.y;
+      if (acrossRiver(state, sq, prey)) {
+        // route via nearest bridge, aim for the bridgehead past it
+        const by = nearestBridgeY(state, sq.x, sq.y);
+        if (sq.x !== V3.RIVER_X) { tx = V3.RIVER_X; ty = by; }
+        else { tx = V3.RIVER_X + Math.sign(prey.x - V3.RIVER_X); ty = by; }
+      }
+      if (tx !== sq.x || ty !== sq.y) o.move = { x: tx, y: ty };
+      o.focus = prey.id;
+      o.stance = 'assault';
+    } else {
+      // infantry: close distance; route via bridge when separated
+      let tx = near.f.x, ty = near.f.y;
+      if (acrossRiver(state, sq, near.f)) {
+        const by = nearestBridgeY(state, sq.x, sq.y);
+        if (sq.x !== V3.RIVER_X) { tx = V3.RIVER_X; ty = by; }
+        else { tx = V3.RIVER_X + Math.sign(near.f.x - V3.RIVER_X); ty = by; }
+        o.stance = 'advance';
+      } else if (near.d > 1) {
+        o.stance = 'advance';
+      } else {
+        o.stance = 'hold';
+      }
+      if (tx !== sq.x || ty !== sq.y) o.move = { x: tx, y: ty };
+    }
+    orders[sq.id] = o;
+  }
+  return orders;
+}
+
 // ---------------- battle factory ----------------------------------
 // Creates a full battle state from two built sides. seed should be the
-// battle id (deterministic terrain per battle).
+// battle id (deterministic terrain per battle). v3: map comes from
+// mapgen.js; castles are the objectives.
 function createBattleState(battleId, attackerSide, defenderSide, seedExtra) {
   const w = TACTICS.gridW;
   const h = TACTICS.gridH;
   const rng = mulberry32(battleId * 7919 + (seedExtra || 0));
-  const landmark = makeLandmarks(w, h, rng);
+  const map = generateV3Map(battleId * 131 + (seedExtra || 0));
   const state = {
     battleId,
     round: 0,
     grid: { w, h },
-    terrain: makeTerrain(w, h, rng),
-    obstacles: landmark.obstacles,
-    keeps: landmark.keeps,
+    version: 3,
+    terrain: map.grid,
+    castles: map.castles,
+    // back-compat derives (v2 code paths read these)
+    obstacles: [],
+    keeps: Object.entries(map.castles)
+      .filter(([, c]) => c.kind === 'keep')
+      .map(([key, c]) => ({ key, x: c.x, y: c.y, owner: c.owner, name: c.name })),
     rng,
     attacker: attackerSide,
     defender: defenderSide,
@@ -676,16 +771,34 @@ function createBattleState(battleId, attackerSide, defenderSide, seedExtra) {
     winner: null,
     log: [],
     firstMoverAttacker: rng() < 0.5,
+    siegeCounter: { attacker: 0, defender: 0 },
   };
   // Stamp side ownership on every squad FIRST (deploy + combat read it),
-  // then deploy with per-side prefixes for stable Persian ids.
+  // then deploy (attacker west, defender east, mirrored spawns).
   attackerSide.side = 'attacker';
   defenderSide.side = 'defender';
   for (const s of attackerSide.squads) s.side = 'attacker';
   for (const s of defenderSide.squads) s.side = 'defender';
   deploy(w, h, attackerSide, 'attacker', 'ح');
   deploy(w, h, defenderSide, 'defender', 'د');
-  // Capture any keeps a squad now stands on; resolve fort buffs/atk.
+  // v3 command structure: biggest squad = commander (full hero bonus),
+  // the other three = lieutenants (aide multiplier 0.85, no hero aura).
+  // Titles are exposed on the squad objects so agents and viewers can
+  // see the command corps.
+  for (const sideObj of [attackerSide, defenderSide]) {
+    const bySize = [...sideObj.squads].sort((a, b) => b.count - a.count);
+    bySize.forEach((s, i) => {
+      if (i === 0) {
+        s.commander = true;
+        s.title = 'سردار';
+      } else {
+        s.commander = false;
+        s.title = `سپهبد ${i}`;
+        s.heroMult = (s.heroMult || 1) * 0.85;
+      }
+    });
+  }
+  // Resolve castle garrisons/fort buffs for squads that spawn on castles.
   captureKeeps(state);
   state.all = [...attackerSide.squads, ...defenderSide.squads];
   attackerSide.startPower = sidePower(state, 'attacker');
@@ -709,12 +822,15 @@ function serializeSide(side) {
 function serializeState(state) {
   return {
     battleId: state.battleId,
+    version: state.version || 3,
     round: state.round,
     grid: state.grid,
     terrain: state.terrain,
-    obstacles: state.obstacles,
-    keeps: state.keeps,
+    castles: state.castles,
+    obstacles: state.obstacles || [],
+    keeps: state.keeps || [],
     objectives: state.objectives,
+    siegeCounter: state.siegeCounter || { attacker: 0, defender: 0 },
     rngState: state.rng.getState(),
     firstMoverAttacker: state.firstMoverAttacker,
     attacker: serializeSide(state.attacker),
@@ -738,12 +854,15 @@ function restoreState(frozen) {
   for (const s of defender.squads) s.side = 'defender';
   return {
     battleId: frozen.battleId,
+    version: frozen.version || 3,
     round: frozen.round,
     grid: frozen.grid,
     terrain: frozen.terrain,
+    castles: frozen.castles,
     obstacles: frozen.obstacles || [],
     keeps: frozen.keeps || [],
     objectives: frozen.objectives || { attacker: 0, defender: 0, neutral: (frozen.keeps || []).length },
+    siegeCounter: frozen.siegeCounter || { attacker: 0, defender: 0 },
     rng,
     firstMoverAttacker: frozen.firstMoverAttacker,
     attacker,
@@ -766,4 +885,6 @@ module.exports = {
   manhattan,
   serializeState,
   restoreState,
+  tileCfg,
+  castleAt,
 };

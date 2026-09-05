@@ -25,6 +25,7 @@
 // ============================================================
 const { db } = require('../db');
 const { SOLDIERS, BATTLE, TACTICS } = require('./balance');
+const { V3 } = require('./mapgen');
 const { GameError } = require('./errors');
 const { adjust } = require('./bank');
 const barracks = require('./barracks');
@@ -468,6 +469,8 @@ function getView(state, side, submitted) {
     type: s.type,
     name: s.name,
     role: s.role,
+    commander: !!s.commander,
+    title: s.title || null,
     count: Math.max(0, Math.round(s.count)),
     hp: Math.round(s.hp),
     maxHp: s.maxHp,
@@ -477,6 +480,7 @@ function getView(state, side, submitted) {
     range: s.range,
     routed: !!s.routed,
     onKeep: !!s.onKeep,
+    onOwnCastle: !!s.onOwnCastle,
     ...(mine
       ? { morale: Math.round(s.morale), unitAtk: Math.round(s.unitAtk * 10) / 10, unitDef: Math.round(s.unitDef * 10) / 10 }
       : { moraleBand: s.morale > 66 ? 'high' : s.morale > 33 ? 'medium' : 'low' }),
@@ -484,11 +488,13 @@ function getView(state, side, submitted) {
   const powFrac = (sd) => tactics.sidePower(state, sd) / Math.max(state[sd].startPower, 1);
   return {
     battleId: state.battleId,
+    version: state.version || 3,
     grid: state.grid,
     terrain: state.terrain,
-    obstacles: state.obstacles,
-    keeps: state.keeps,
-    objectives: state.objectives || { attacker: 0, defender: 0, neutral: state.keeps.length },
+    castles: state.castles || null,
+    obstacles: state.obstacles || [],
+    keeps: state.keeps || [],
+    objectives: state.objectives || { attacker: 0, defender: 0, neutral: (state.keeps || []).length },
     round: state.round,
     maxRounds: TACTICS.maxRounds,
     orderTimerSec: TACTICS.orderTimerSec,
@@ -500,6 +506,134 @@ function getView(state, side, submitted) {
       ...state[foeSide].squads.map((s) => projSquad(s, false)),
     ],
   };
+}
+
+// ---------------- viewer (spectator) projections ------------------
+// A broadcast view: both armies visible (stadium screen), no fog, no
+// order-timer, no private morale — just the dramatic layer.
+function getViewerProjection(state) {
+  const powFrac = (sd) => tactics.sidePower(state, sd) / Math.max(state[sd].startPower, 1);
+  return {
+    version: state.version || 3,
+    battleId: state.battleId,
+    grid: state.grid,
+    terrain: state.terrain,
+    castles: state.castles || null,
+    objectives: state.objectives || null,
+    round: state.round,
+    maxRounds: TACTICS.maxRounds,
+    status: state.status,
+    winner: state.winner || null,
+    endReason: state.endReason || null,
+    powerFrac: {
+      attacker: +powFrac('attacker').toFixed(3),
+      defender: +powFrac('defender').toFixed(3),
+    },
+    squads: state.all.map((s) => ({
+      id: s.id, type: s.type, name: s.name, role: s.role,
+      side: s.side, commander: !!s.commander, title: s.title || null,
+      count: Math.max(0, Math.round(s.count)),
+      x: s.x, y: s.y, mp: s.mp, range: s.range,
+      routed: !!s.routed,
+      moraleBand: s.morale > 66 ? 'high' : s.morale > 33 ? 'medium' : 'low',
+    })),
+  };
+}
+
+// Finished-battle replay for the theater: round-by-round log + initial
+// deployment so the client can replay the whole drama. Handles BOTH log
+// shapes: v2 object logs ({rounds, terrain, initial, log, ...}) and any
+// future array-shaped logs.
+function getViewerReplay(row) {
+  let parsed = null;
+  try { parsed = JSON.parse(row.log_json || 'null'); } catch { parsed = null; }
+  let state = null;
+  try { state = JSON.parse(row.battle_state_json || 'null'); } catch { state = null; }
+
+  let rounds = [];
+  let endReason = null;
+  let terrain = null, castles = null, initial = null;
+  if (Array.isArray(parsed)) {
+    rounds = parsed.map((r) => ({ round: r.round, events: r.events }));
+    const last = rounds[rounds.length - 1];
+    endReason = last && last.events ? ((last.events.find((e) => e.kind === 'end') || {}).reason || null) : null;
+  } else if (parsed && typeof parsed === 'object') {
+    // v2/v3 auto-mode object log carries everything the theater needs
+    rounds = (parsed.log || []).map((r) => ({ round: r.round, events: r.events }));
+    endReason = parsed.reason || null;
+    terrain = parsed.terrain || null;
+    castles = parsed.castles || null;
+    initial = parsed.initial || null;
+  }
+  // v3 log objects store castles inside initial? no — castles live on the
+  // serialized state; if the log predates state persistence, derive keep
+  // tiles from the terrain grid itself (castle-type tiles).
+  if (!castles && terrain) {
+    const cast = {};
+    for (let y = 0; y < terrain.length; y++) {
+      for (let x = 0; x < (terrain[0] || []).length; x++) {
+        if (terrain[y][x] === 'castle') {
+          // canonical positions only (avoid legacy 17-wide maps)
+          const known = Object.values(V3.CASTLES).find((c) => c.x === x && c.y === y);
+          if (known) cast[Object.keys(V3.CASTLES).find((k) => V3.CASTLES[k] === known)] = { ...known, owner: null };
+        }
+      }
+    }
+    if (Object.keys(cast).length === 4) castles = cast;
+  }
+
+  // Derive the initial deployment from the earliest 'move' event of every
+  // squad (its 'from' tile) — robust for v2 and v3 logs, no state needed.
+  let derivedSquads = [];
+  if (rounds.length) {
+    const seen = new Map();
+    for (const r of rounds) {
+      for (const e of r.events) {
+        if (e.kind === 'move' && e.from && !seen.has(e.squad)) {
+          seen.set(e.squad, { id: e.squad, side: e.side, type: e.type, x: e.from.x, y: e.from.y, count: 0, routed: false });
+        }
+      }
+    }
+    // counts: distribute startCounts by unit type if the log carries them
+    const startCounts = initial && Object.values(initial).length
+      ? Object.fromEntries(Object.entries(initial).map(([sd, s]) => [sd, s.startCounts || {}]))
+      : {};
+    const perType = {};
+    for (const [sd, types] of Object.entries(startCounts)) {
+      for (const [type, n] of Object.entries(types)) {
+        const ids = [...seen.values()].filter((s) => s.side === sd && s.type === type);
+        perType[sd + ':' + type] = { total: n, ids, idx: 0 };
+      }
+    }
+    derivedSquads = [...seen.values()].map((s) => {
+      const bucket = perType[s.side + ':' + s.type];
+      if (bucket && bucket.ids.length) {
+        const share = Math.floor(bucket.total / bucket.ids.length);
+        const extra = bucket.idx < bucket.total % bucket.ids.length ? 1 : 0;
+        bucket.idx++;
+        s.count = share + extra;
+      }
+      return s;
+    });
+  }
+
+  return {
+    version: (state && state.version) || (parsed && parsed.version) || 3,
+    battleId: row.id,
+    grid: state ? state.grid : { w: (terrain && terrain[0].length) || TACTICS.gridW, h: (terrain && terrain.length) || TACTICS.gridH },
+    terrain,
+    castles,
+    initial,
+    initialSquads: derivedSquads,
+    winner: row.winner_id === row.attacker_id ? 'attacker' : row.winner_id === row.defender_id ? 'defender' : null,
+    endReason,
+    rounds,
+  };
+}
+
+// Live-battle loader for viewers (no user check — public broadcast).
+function loadLiveForViewer(battleId) {
+  return loadLiveBattle(battleId);
 }
 
 // ---------------- completion ----------------
@@ -724,4 +858,7 @@ module.exports = {
   battleHistory,
   expireStaleOpens,
   sweepDeadlines,
+  getViewerProjection,
+  getViewerReplay,
+  loadLiveForViewer,
 };

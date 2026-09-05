@@ -121,22 +121,41 @@ const BATTLE = {
 // ----- Tactical battle system (interactive grid combat) ---------
 // All knobs for tactics.js live here.
 const TACTICS = {
-  gridW: 17,
+  gridW: 21,
   gridH: 15,
   squadSize: 25,        // soldiers per squad
-  maxSquadsPerSide: 8,  // army splits into at most this many squads
-  maxRounds: 22,        // hard round cap -> points decision/draw
+  maxSquadsPerSide: 4,  // v3: commander + 3 lieutenants
+  maxRounds: 30,        // hard round cap -> points decision/draw
   orderTimerSec: Number(process.env.GORZ_ORDER_TIMER_SEC) || 45, // per-round order window before AI kicks in
 
-  // terrain generation
-  forestChance: 0.16,   // forest tile: +def, blocks cavalry charge
-  hillChance: 0.12,     // hill tile: +atk for whoever stands on it
+  // --- v3 map: real terrain rules (DESIGN-v3 §1.2) -------------------
+  // Generation is deterministic + point-symmetric (server/game/mapgen.js);
+  // the old forestChance/hillChance scatter is retired.
+  forestChance: 0,      // retired: v3 forests come from mapgen, not noise
+  hillChance: 0,        // retired: v3 hills come from mapgen, not noise
+  terrainCfg: {         // per-tile rules; mapgen.TERRAIN_RULES mirrors this
+    plain:    { cost: 1, defBonus: 0,    atkBonus: 0,    charge: true,  passable: true },
+    hill:     { cost: 1, defBonus: 0,    atkBonus: 0.15, charge: true,  passable: true },
+    forest:   { cost: 1, defBonus: 0.35, atkBonus: 0,    charge: false, passable: true },
+    jungle:   { cost: 2, defBonus: 0.5,  atkBonus: 0,    charge: false, passable: true },
+    water:    { cost: Infinity, defBonus: 0, atkBonus: 0, charge: false, passable: false },
+    bridge:   { cost: 1, defBonus: 0,    atkBonus: 0,    charge: true,  passable: true },
+    mountain: { cost: Infinity, defBonus: 0, atkBonus: 0, charge: false, passable: false },
+    castle:   { cost: 1, defBonus: 0.4,  atkBonus: 0,    charge: false, passable: true },
+  },
+  jungleDefBonus: 0.5,  // +50% defense in dense jungle
+  jungleCost: 2,        // jungle costs 2 MP per tile (thick canopy)
+  castleDefBonus: 0.4,  // +40% defense for a squad ON a castle it owns
+  siegeRoundsToWin: 3,  // hold BOTH neutral keeps this many consecutive rounds -> siege win
+  castlePoints: 100,    // score per owned castle at round cap
+  powerPoints: 1000,    // surviving power fraction scaled by this at round cap
 
-  // landmarks (occupied, impassable) + neutral capturable keeps
-  lakeCount: 3,         // impassable water
-  mountainCount: 5,     // impassable peaks
-  ruinsCount: 4,        // impassable rubble (light def bonus to adjacent)
-  keepCount: 3,         // neutral keeps in the open middle band (capture to hold)
+  // landmarks (v2 legacy scatter — unused by v3 mapgen, kept for
+  // backwards compat with persisted v2 battle states)
+  lakeCount: 0,
+  mountainCount: 0,
+  ruinsCount: 0,
+  keepCount: 0,         // v3 keeps come from mapgen castles
   keepDefBonus: 0.40,   // +40% defense while holding a keep
   keepHoldAtkBonus: 0.15, // keep garrison also hits a bit harder
   keepCaptureRadius: 0, // must stand ON the keep tile to capture

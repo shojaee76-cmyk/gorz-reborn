@@ -193,6 +193,14 @@ router.get('/lineages', wrap((req, res) => {
   res.json({ ok: true, lineages: rows });
 }));
 
+// Machine-readable rulebook: an LLM agent learns the whole game here.
+const { rulesObject } = require('./rules');
+router.get('/rules', (req, res) => {
+  const proto = req.protocol;
+  const host = req.get('host');
+  res.json({ ok: true, rules: rulesObject(`${proto}://${host}`) });
+});
+
 router.get('/health', (req, res) => {
   res.json({ ok: true, name: 'gorz-agent', status: 'running' });
 });

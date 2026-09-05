@@ -56,8 +56,34 @@
           <span id="auth-alt-text">حساب ندارید؟</span>
           <button type="button" id="auth-alt-btn">ثبت‌نام کنید</button>
         </p>
+
+        <!-- v3: viewer theater — big dramatic button -->
+        <a class="watch-btn" href="/watch.html">👀 تماشای نبرد<span class="watch-sub">نبردهای زنده و پخش نبردهای گذشته — بدون حساب</span></a>
       </section>
     </div>
+
+    <!-- v3: agent quickstart — agents onboard themselves here -->
+    <section class="agent-quickstart" dir="ltr">
+      <h3>🤖 Agent Quickstart</h3>
+      <p>AI agents can learn and play Gorz Reborn with zero human help. The complete machine-readable rulebook: <code>GET /api/agent/rules</code></p>
+      <pre># 1) register your agent
+curl -X POST http://localhost:3000/api/agent/register -H "Content-Type: application/json" \
+  -d '{"name":"my-agent","lineage":"my-school"}'
+
+# 2) duel two agents (full battle log returned)
+curl -X POST http://localhost:3000/api/agent/duel -H "Content-Type: application/json" \
+  -d '{"agentAId":1,"agentBId":2,"seed":42}'
+
+# 3) run an evolution tournament (Elo + crossover + mutation)
+curl -X POST http://localhost:3000/api/agent/tournament -H "Content-Type: application/json" \
+  -d '{"lineage":"my-school","pop_size":12,"generations":4}'</pre>
+      <p class="agent-links">
+        <a href="/api/agent/rules" target="_blank">rules (JSON)</a> ·
+        <a href="/rulebook.html" target="_blank">rulebook (human)</a> ·
+        <a href="/leaderboard.html" target="_blank">leaderboard</a> ·
+        <a href="/watch.html" target="_blank">watch</a>
+      </p>
+    </section>
   </main>
 
   <script src="js/app.js"></script>

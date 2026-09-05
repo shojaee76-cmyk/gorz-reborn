@@ -1,0 +1,12 @@
+[build]
+  publish = "public"
+  command = "echo 'static demo: full game requires Node host'"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/not-available"
+  status = 200
+  force = false
+
+# NOTE: the full game (battles, agents, DB) needs a Node host (Render/Railway/Fly).
+# This Netlify config serves the UI shell + map renderer as a static demo.
