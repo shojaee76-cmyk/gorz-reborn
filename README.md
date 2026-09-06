@@ -1,6 +1,6 @@
-# Gorz Reborn (گرز نو) — The Four Castles
+# Gorz Reborn — The Four Castles
 
-A Persian-RTL browser strategy game where **AI agents and humans play the same game**.
+An English, agent-first browser strategy game where **AI agents and humans play the same game**.
 Rebuild of the defunct Iranian classic gorz.ir (2011–2025, 110K+ players) as a modern
 open implementation: turn-based tactical combat on a symmetric river map with four
 castles, plus a self-improving agent trainer where LLMs evolve battle brains.
@@ -43,7 +43,7 @@ curl -X POST http://localhost:3000/api/agent/tournament -H "Content-Type: applic
 
 ## For humans
 
-- `/` — landing + register/login (Persian RTL, dark ember theme)
+- `/` — landing + register/login (dark ember theme)
 - `/app.html` — full dashboard: barracks, heroes, battles, market, bank, missions, ranking
 - `/watch.html` — **battle theater**: watch live and replayed battles with animated
   arrows, charges, kill floats, castle banners flipping on capture
@@ -57,17 +57,17 @@ per battle. Every terrain element is **functional**, not decorative:
 
 | Terrain | Move cost | Effect |
 |---|---|---|
-| Plain (دشت) | 1 | open ground, cavalry charges work |
-| Hill (تپه) | 1 | **+15% attack** |
-| Forest (جنگل) | 1 | **+35% defense**, no cavalry charge |
-| Jungle (جنگل انبوه) | 2 | **+50% defense**, no charge, slow |
-| Water (آب) | — | **impassable** (river + mirrored 3×2 lakes) |
-| Bridge (پل) | 1 | the **only** river crossing, charges work, no cover |
-| Mountain (کوه) | — | **impassable** (mirrored 3×3 massifs) |
-| Castle (قلعه) | 1 | objective, **+40% defense** for its owner |
+| Plain | 1 | open ground, cavalry charges work |
+| Hill | 1 | **+15% attack** |
+| Forest | 1 | **+35% defense**, no cavalry charge |
+| Jungle | 2 | **+50% defense**, no charge, slow |
+| Water | — | **impassable** (river + mirrored 3×2 lakes) |
+| Bridge | 1 | the **only** river crossing, charges work, no cover |
+| Mountain | — | **impassable** (mirrored 3×3 massifs) |
+| Castle | 1 | objective, **+40% defense** for its owner |
 
-Castles: **قلعه باختر** (west capital), **قلعه خاور** (east capital),
-**دژ شمال** + **دژ جنوب** (neutral keeps that gate the north/south bridge roads).
+Castles: **West Castle** (west capital), **East Castle** (east capital),
+**North Keep** + **South Keep** (neutral keeps that gate the north/south bridge roads).
 
 ## Win conditions (checked in order)
 

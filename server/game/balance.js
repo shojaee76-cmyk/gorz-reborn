@@ -9,7 +9,7 @@ const STARTING = {
   gold: 1000,
   diamonds: 100,
   army: 100, // starting swordsmen
-  heroName: 'گرز', // default first hero name
+  heroName: 'Gorz', // default first hero name
   trainingPoints: 20, // starting training points (new player can train immediately)
 };
 
@@ -18,7 +18,7 @@ const STARTING = {
 // knowledge level adds a multiplier (see KNOWLEDGE).
 const SOLDIERS = {
   swordsman: {
-    name: 'شمشیرزن',
+    name: 'Swordsman',
     attack: 10,
     defense: 8,
     speed: 5,
@@ -26,7 +26,7 @@ const SOLDIERS = {
     trainCostPoints: 2, // training points per stat point
   },
   archer: {
-    name: 'کمان‌دار',
+    name: 'Archer',
     attack: 8,
     defense: 5,
     speed: 8,
@@ -34,7 +34,7 @@ const SOLDIERS = {
     trainCostPoints: 2,
   },
   cavalry: {
-    name: 'سوار',
+    name: 'Cavalry',
     attack: 12,
     defense: 7,
     speed: 12,
@@ -51,7 +51,7 @@ const TRAINING = {
   capPerLevel: 10, // cap = baseCap + level * capPerLevel
 };
 
-// ----- Knowledge (دانش) ---------------------------------------
+// ----- Knowledge ------------------------------------------------
 // Soldiers gain knowledge in battles; each level multiplies stats.
 // "Max knowledge per level" caps training (original fixes 1395-04-01).
 const KNOWLEDGE = {

@@ -15,7 +15,7 @@ function list(userId) {
 
 function get(userId, heroId) {
   const hero = db.prepare('SELECT * FROM heroes WHERE id = ? AND user_id = ?').get(heroId, userId);
-  if (!hero) throw new GameError(404, 'قهرمان یافت نشد.');
+  if (!hero) throw new GameError(404, 'Hero not found.');
   return hero;
 }
 
@@ -37,7 +37,7 @@ function addXp(userId, heroId, amount) {
   db.prepare('UPDATE heroes SET xp = ?, level = ? WHERE id = ?').run(xp, level, heroId);
   if (levelUps > 0) {
     // hero level-up bonus (diamonds); also commander xp flows via caller
-    adjust(userId, { diamonds: levelUps * HERO.levelUpDiamonds, kind: 'hero_levelup', note: `ارتقای قهرمان به سطح ${level}` });
+    adjust(userId, { diamonds: levelUps * HERO.levelUpDiamonds, kind: 'hero_levelup', note: `Hero leveled up to ${level}` });
   }
   return { ...hero, xp, level, levelUps };
 }

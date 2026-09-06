@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gorz Arena - Hosted Battles</title>
+  <meta name="description" content="Gorz Reborn hosted agent battles: cloud tournament reports, champion genomes, and the live agent leaderboard." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='0.9em' font-size='90'%3E%E2%9A%94%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="../css/app.css" />
+  <style>
+    /* ==================== arena-specific styles ==================== */
+    .ar-shell { max-width: 1200px; margin: 0 auto; padding: 32px 24px 64px; }
+    .ar-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
+    .ar-title { font-size: 28px; font-weight: 700; color: var(--text); margin: 0; letter-spacing: -0.5px; }
+    .ar-title .ember { color: var(--accent-strong); }
+    .ar-subtitle { color: var(--text-dim); font-size: 14px; margin: 4px 0 0; }
+    .ar-badge { display: inline-block; padding: 4px 12px; border-radius: 999px; background: var(--bg-deep); border: 1px solid var(--line); color: var(--text-dim); font-size: 12px; font-weight: 600; }
+    .ar-badge.live { color: var(--good); border-color: var(--good-soft); }
+    .ar-badge.err { color: var(--bad); border-color: var(--bad-soft); }
+
+    .ar-section { margin-top: 28px; }
+    .ar-section-title { font-size: 16px; font-weight: 700; color: var(--text); margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+    .ar-section-title .tick { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); display: inline-block; }
+
+    .ar-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .ar-stat { background: var(--bg-panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; }
+    .ar-stat-label { color: var(--text-dim); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .ar-stat-value { color: var(--text); font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .ar-stat-value.accent { color: var(--accent-strong); }
+
+    .ar-card { background: var(--bg-panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+    .ar-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .ar-table th { background: var(--bg-deep); color: var(--text-dim); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--line); }
+    .ar-table td { padding: 12px 16px; border-bottom: 1px solid var(--line-soft); color: var(--text); vertical-align: middle; }
+    .ar-table tr:last-child td { border-bottom: none; }
+    .ar-table tr.ar-champ-row td { background: var(--accent-soft); }
+    .ar-rank { font-weight: 700; color: var(--text-faint); width: 44px; font-variant-numeric: tabular-nums; }
+    .ar-rank.top1 { color: var(--accent-strong); font-size: 17px; }
+    .ar-rank.top3 { color: var(--accent); }
+    .ar-name { font-weight: 600; }
+    .ar-name .anon { color: var(--text-faint); font-weight: 400; font-style: italic; }
+    .ar-mono { font-family: var(--mono, 'JetBrains Mono', Consolas, monospace); font-size: 12px; color: var(--text-dim); }
+    .ar-gen { display: inline-block; padding: 2px 8px; border-radius: 999px; background: var(--bg-deep); color: var(--text-dim); font-size: 11px; font-weight: 600; }
+    .ar-fitness { font-weight: 700; font-variant-numeric: tabular-nums; }
+    .ar-wld { font-variant-numeric: tabular-nums; color: var(--text-dim); font-size: 13px; }
+    .ar-wld .w { color: var(--good); }
+    .ar-wld .l { color: var(--bad); }
+    .ar-wld .d { color: var(--warn); }
+    .ar-comp { display: flex; height: 8px; border-radius: 999px; overflow: hidden; background: var(--bg-deep); border: 1px solid var(--line-soft); width: 110px; }
+    .ar-comp .seg { height: 100%; }
+    .ar-comp .seg.s { background: #7fb2e5; }
+    .ar-comp .seg.a { background: #6fcf97; }
+    .ar-comp .seg.c { background: #e8c15a; }
+
+    .ar-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 860px) { .ar-grid2 { grid-template-columns: 1fr; } }
+
+    .ar-champ { background: var(--bg-panel); border: 1px solid var(--accent-line); border-radius: 14px; padding: 20px; }
+    .ar-champ-name { font-size: 20px; font-weight: 700; color: var(--accent-strong); margin: 0 0 4px; }
+    .ar-champ-meta { color: var(--text-dim); font-size: 13px; margin-bottom: 14px; }
+    .ar-pre { background: var(--bg-deep); border: 1px solid var(--line); border-radius: 10px; padding: 14px; font-family: var(--mono, Consolas, monospace); font-size: 12px; color: var(--text); overflow: auto; max-height: 340px; margin: 0; }
+
+    .ar-import { background: var(--bg-panel); border: 1px dashed var(--line); border-radius: 14px; padding: 20px; }
+    .ar-import p { color: var(--text-dim); font-size: 13px; margin: 0 0 12px; }
+    .ar-textarea { width: 100%; min-height: 120px; background: var(--bg-deep); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 12px; font-family: var(--mono, Consolas, monospace); font-size: 12px; resize: vertical; box-sizing: border-box; }
+    .ar-textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .ar-btn { background: var(--bg-panel); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px 16px; font-family: inherit; font-size: 14px; cursor: pointer; transition: all 0.15s; }
+    .ar-btn:hover { background: var(--bg-hover); border-color: var(--accent-line); }
+    .ar-btn.primary { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-strong); }
+    .ar-btn.primary:hover { background: var(--accent-line); }
+    .ar-drop { border: 2px dashed var(--line); border-radius: 10px; padding: 18px; text-align: center; color: var(--text-faint); font-size: 13px; margin-top: 10px; transition: all 0.15s; }
+    .ar-drop.over { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+
+    .ar-empty { padding: 32px; text-align: center; color: var(--text-faint); font-size: 14px; }
+    .ar-foot { margin-top: 40px; color: var(--text-faint); font-size: 12px; text-align: center; }
+    .ar-foot a { color: var(--text-dim); }
+  </style>
+</head>
+<body>
+  <main class="ar-shell">
+    <header class="ar-header">
+      <div>
+        <h1 class="ar-title">Gorz <span class="ember">Arena</span> - Hosted Battles</h1>
+        <p class="ar-subtitle">Agent tournaments run on free cloud runners (GitHub Actions). Reports land here - no PC required.</p>
+      </div>
+      <span class="ar-badge" id="server-badge">checking server…</span>
+    </header>
+
+    <!-- ============ live leaderboard (needs the gorz server) ============ -->
+    <section class="ar-section">
+      <h2 class="ar-section-title"><span class="tick"></span>Live agent leaderboard</h2>
+      <div class="ar-card" id="live-card">
+        <table class="ar-table">
+          <thead>
+            <tr>
+              <th>#</th><th>Agent</th><th>Lineage</th><th>Gen</th><th>Fitness</th><th>W/L/D</th><th>Composition</th>
+            </tr>
+          </thead>
+          <tbody id="live-tbody">
+            <tr><td colspan="7" class="ar-empty">loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ hosted tournament report ============ -->
+    <section class="ar-section">
+      <h2 class="ar-section-title"><span class="tick"></span>Hosted tournament report</h2>
+      <div class="ar-stats" id="report-stats" hidden>
+        <div class="ar-stat"><div class="ar-stat-label">Lineage</div><div class="ar-stat-value" id="st-lineage">-</div></div>
+        <div class="ar-stat"><div class="ar-stat-label">Generations</div><div class="ar-stat-value" id="st-gens">-</div></div>
+        <div class="ar-stat"><div class="ar-stat-label">Population</div><div class="ar-stat-value" id="st-pop">-</div></div>
+        <div class="ar-stat"><div class="ar-stat-label">Matches</div><div class="ar-stat-value accent" id="st-matches">-</div></div>
+        <div class="ar-stat"><div class="ar-stat-label">Decisive</div><div class="ar-stat-value" id="st-decisive">-</div></div>
+        <div class="ar-stat"><div class="ar-stat-label">Duration</div><div class="ar-stat-value" id="st-duration">-</div></div>
+      </div>
+
+      <div class="ar-grid2">
+        <div class="ar-champ" id="champ-card" hidden>
+          <h3 class="ar-champ-name" id="champ-name">-</h3>
+          <div class="ar-champ-meta" id="champ-meta">-</div>
+          <pre class="ar-pre" id="champ-genome">-</pre>
+        </div>
+
+        <div>
+          <div class="ar-card" id="board-card" hidden>
+            <table class="ar-table">
+              <thead>
+                <tr><th>#</th><th>Agent</th><th>Gen</th><th>Fitness</th><th>W/L/D</th><th>Composition</th></tr>
+              </thead>
+              <tbody id="board-tbody"></tbody>
+            </table>
+          </div>
+          <div class="ar-card" id="gens-card" hidden style="margin-top:16px">
+            <table class="ar-table">
+              <thead>
+                <tr><th>Gen</th><th>Matches</th><th>Decisive</th><th>Rate</th><th>Errors</th></tr>
+              </thead>
+              <tbody id="gens-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- import: drop the CI artifact here or paste its JSON -->
+      <div class="ar-import ar-section">
+        <p>No report loaded. Drop a <code>gorz-battle-report.json</code> artifact below, paste its JSON, or place it next to this page as <code>arena/report.json</code>.</p>
+        <textarea class="ar-textarea" id="paste-box" placeholder='{"runner":"gorz-hosted-runner", "lineage":"ci-sparta", ...}'></textarea>
+        <div style="margin-top:10px; display:flex; gap:10px;">
+          <button class="ar-btn primary" id="import-btn" type="button">Import pasted JSON</button>
+          <button class="ar-btn" id="fetch-btn" type="button">Try arena/report.json</button>
+        </div>
+        <div class="ar-drop" id="drop-zone">drop gorz-battle-report.json here</div>
+      </div>
+    </section>
+
+    <p class="ar-foot">
+      Reports are produced by <code>server/agent/hosted.js</code> in the
+      <strong>gorz-battles</strong> GitHub Actions workflow ·
+      <a href="/leaderboard.html">full leaderboard</a> ·
+      <a href="/rulebook.html">rulebook</a>
+    </p>
+  </main>
+
+  <script>
+  (function () {
+    'use strict';
+
+    // ------------- helpers -------------
+    const $ = (s) => document.querySelector(s);
+    const fmt = (n) => Number(n || 0).toLocaleString('en-US');
+    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[c]));
+
+    async function fetchJSON(path) {
+      const r = await fetch(path, { headers: { Accept: 'application/json' } });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }
+
+    // ------------- live leaderboard (graceful when static) -------------
+    async function loadLive() {
+      const badge = $('#server-badge');
+      const tbody = $('#live-tbody');
+      try {
+        const data = await fetchJSON('/api/agent/population?limit=20');
+        const agents = (data.agents || []).sort((a, b) => (b.fitness || 0) - (a.fitness || 0));
+        badge.textContent = 'server: live';
+        badge.className = 'ar-badge live';
+        if (!agents.length) {
+          tbody.innerHTML = '<tr><td colspan="7" class="ar-empty">No agents yet - run a tournament first.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = agents.map((a, i) => {
+          const comp = a.genome && a.genome.composition || {};
+          const s = Math.round((comp.swordsman || 0) * 100);
+          const ar = Math.round((comp.archer || 0) * 100);
+          const c = Math.max(0, 100 - s - ar);
+          return `<tr>
+            <td class="ar-rank ${i === 0 ? 'top1' : i < 3 ? 'top3' : ''}">${i + 1}</td>
+            <td class="ar-name">${esc(a.name) || '<span class="anon">agent #' + a.id + '</span>'}</td>
+            <td><span class="ar-gen">${esc(a.lineage)}</span></td>
+            <td><span class="ar-gen">${a.generation}</span></td>
+            <td class="ar-fitness">${fmt(a.fitness)}</td>
+            <td class="ar-wld"><span class="w">${a.wins}</span>/<span class="l">${a.losses}</span>/<span class="d">${a.draws}</span></td>
+            <td><div class="ar-comp" title="${s}% swordsman / ${ar}% archer / ${c}% cavalry">
+              <div class="seg s" style="width:${s}%"></div>
+              <div class="seg a" style="width:${ar}%"></div>
+              <div class="seg c" style="width:${c}%"></div>
+            </div></td>
+          </tr>`;
+        }).join('');
+      } catch (e) {
+        badge.textContent = 'server: offline (static view)';
+        badge.className = 'ar-badge err';
+        tbody.innerHTML = '<tr><td colspan="7" class="ar-empty">Live leaderboard needs the gorz server. The report below works fully offline.</td></tr>';
+      }
+    }
+
+    // ------------- report rendering -------------
+    function compBar(comp) {
+      const s = Math.round((comp.swordsman || 0) * 100);
+      const a = Math.round((comp.archer || 0) * 100);
+      const c = Math.max(0, 100 - s - a);
+      return `<div class="ar-comp" title="${s}% swordsman / ${a}% archer / ${c}% cavalry">
+        <div class="seg s" style="width:${s}%"></div>
+        <div class="seg a" style="width:${a}%"></div>
+        <div class="seg c" style="width:${c}%"></div>
+      </div>`;
+    }
+
+    function renderReport(r) {
+      const gens = r.generations || [];
+      const totalMatches = gens.reduce((s, g) => s + (g.matches || 0), 0);
+      const totalDecisive = gens.reduce((s, g) => s + (g.decisive || 0), 0);
+      const totalErrors = gens.reduce((s, g) => s + (g.errors || 0), 0);
+
+      $('#report-stats').hidden = false;
+      $('#st-lineage').textContent = r.lineage || '-';
+      $('#st-gens').textContent = (r.params && r.params.gens) || gens.length || '-';
+      $('#st-pop').textContent = (r.params && r.params.pop) || '-';
+      $('#st-matches').textContent = fmt(totalMatches);
+      $('#st-decisive').textContent = totalMatches
+        ? `${fmt(totalDecisive)} (${Math.round(100 * totalDecisive / totalMatches)}%)` : '0';
+      $('#st-duration').textContent = r.durationMs != null ? (r.durationMs / 1000).toFixed(1) + 's' : '-';
+
+      const champ = r.champion || (r.leaderboard || [])[0];
+      if (champ) {
+        $('#champ-card').hidden = false;
+        $('#champ-name').textContent = champ.name ? champ.name : 'Agent #' + champ.id;
+        const comp = champ.genome && champ.genome.composition || {};
+        $('#champ-meta').textContent =
+          `fitness ${fmt(champ.fitness)} · gen ${champ.generation} · ` +
+          `w/l/d ${champ.wins}/${champ.losses}/${champ.draws} · ` +
+          `comp ${Math.round((comp.swordsman || 0) * 100)}/${Math.round((comp.archer || 0) * 100)}/${Math.round((comp.cavalry || 0) * 100)}` +
+          (r.params ? ` · seed ${r.params.baseSeed}` : '');
+        $('#champ-genome').textContent = JSON.stringify(champ.genome, null, 2);
+      }
+
+      const board = r.leaderboard || [];
+      if (board.length) {
+        $('#board-card').hidden = false;
+        $('#board-tbody').innerHTML = board.map((e, i) => `<tr class="${i === 0 ? 'ar-champ-row' : ''}">
+          <td class="ar-rank ${i === 0 ? 'top1' : i < 3 ? 'top3' : ''}">${i + 1}</td>
+          <td class="ar-name">${esc(e.name) || '<span class="anon">agent #' + e.id + '</span>'}</td>
+          <td><span class="ar-gen">${e.generation}</span></td>
+          <td class="ar-fitness">${fmt(e.fitness)}</td>
+          <td class="ar-wld"><span class="w">${e.wins}</span>/<span class="l">${e.losses}</span>/<span class="d">${e.draws}</span></td>
+          <td>${compBar((e.genome || {}).composition || {})}</td>
+        </tr>`).join('');
+      }
+
+      if (gens.length) {
+        $('#gens-card').hidden = false;
+        $('#gens-tbody').innerHTML = gens.map((g) => `<tr>
+          <td><span class="ar-gen">${g.generation}</span></td>
+          <td>${fmt(g.matches)}</td>
+          <td>${fmt(g.decisive)}</td>
+          <td>${Math.round((g.decisiveRate || 0) * 100)}%</td>
+          <td>${g.errors ? `<span style="color:var(--bad)">${g.errors}</span>` : '0'}</td>
+        </tr>`).join('');
+      }
+    }
+
+    function importReport(text) {
+      try {
+        const r = JSON.parse(text);
+        if (!r.generations && !r.leaderboard) throw new Error('no generations/leaderboard fields');
+        renderReport(r);
+        return true;
+      } catch (e) {
+        alert('Not a valid gorz battle report: ' + e.message);
+        return false;
+      }
+    }
+
+    // ------------- import UI -------------
+    $('#import-btn').addEventListener('click', () => {
+      importReport($('#paste-box').value);
+    });
+
+    $('#fetch-btn').addEventListener('click', async () => {
+      try {
+        const r = await fetchJSON('report.json'); // arena/report.json, relative
+        renderReport(r);
+      } catch (e) {
+        alert('No arena/report.json found (' + e.message + '). Drop or paste the artifact JSON instead.');
+      }
+    });
+
+    const dz = $('#drop-zone');
+    ['dragenter', 'dragover'].forEach((ev) => dz.addEventListener(ev, (e) => {
+      e.preventDefault(); dz.classList.add('over');
+    }));
+    ['dragleave', 'drop'].forEach((ev) => dz.addEventListener(ev, (e) => {
+      e.preventDefault(); dz.classList.remove('over');
+    }));
+    dz.addEventListener('drop', (e) => {
+      const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = () => importReport(String(reader.result));
+      reader.readAsText(f);
+    });
+
+    // ------------- boot -------------
+    loadLive();
+    // Auto-load a dropped-in arena/report.json when present (static hosting).
+    fetch('report.json', { headers: { Accept: 'application/json' } })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+      .then((r) => renderReport(r))
+      .catch(() => { /* silent: no report bundled yet */ });
+  })();
+  </script>
+</body>
+</html>

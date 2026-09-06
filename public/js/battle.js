@@ -9,11 +9,11 @@
   'use strict';
 
   const el = (id) => document.getElementById(id);
-  const fmtNum = (n) => Number(n || 0).toLocaleString('fa-IR');
+  const fmtNum = (n) => Number(n || 0).toLocaleString('en-US');
 
   const TYPE_ICON = { swordsman: '⚔️', archer: '🏹', cavalry: '🐎' };
-  const TERRAIN_LABEL = { plain: 'دشت', forest: 'جنگل', hill: 'تپه' };
-  const STANCE_LABEL = { advance: 'پیشروی', hold: 'دفاع', assault: 'یورش' };
+  const TERRAIN_LABEL = { plain: 'Plain', forest: 'Forest', hill: 'Hill' };
+  const STANCE_LABEL = { advance: 'Advance', hold: 'Hold', assault: 'Assault' };
 
   // ---------- module state ----------
   let socket = null;
@@ -46,12 +46,12 @@
       <div class="battle-wrap">
         <div class="battle-header">
           <div>
-            <h2>نبرد</h2>
-            <p class="battle-sub">نبردِ تاکتیکی — هر دور دستورهای لشگرت را بده و نتیجه را زنده ببین.</p>
+            <h2>Battle</h2>
+            <p class="battle-sub">Tactical combat — give your army orders every round and watch the result live.</p>
           </div>
           <div id="battle-actions" class="battle-actions">
-            <button id="btn-enter-battle" class="btn btn-primary">ورود به نبرد</button>
-            <button id="btn-open-battle" class="btn">چالش باز</button>
+            <button id="btn-enter-battle" class="btn btn-primary">Enter battle</button>
+            <button id="btn-open-battle" class="btn">Open challenge</button>
           </div>
           <span id="battle-status" class="battle-status"></span>
         </div>
@@ -91,7 +91,7 @@
     socket.on('battle:waiting', (p) => {
       if (p && p.battleId === battleId) {
         const mineSubmitted = p.submitted && p.submitted[mySide];
-        if (mineSubmitted) setStatus('دستورها ثبت شد؛ در انتظار حریف…');
+        if (mineSubmitted) setStatus('Orders submitted; waiting for the opponent…');
       }
     });
     socket.on('battle:finished', (p) => {
@@ -112,16 +112,16 @@
   async function enterBattle() {
     const btn = el('btn-enter-battle');
     if (btn) btn.disabled = true;
-    setStatus('در جستجوی هم‌نبرد…');
+    setStatus('Looking for an opponent…');
     try {
       const r = await api('POST', '/battle/enter');
-      if (!r.ok) throw new Error(r.data.error || 'خطای نبرد');
+      if (!r.ok) throw new Error(r.data.error || 'Battle error');
       setStatus('');
       if (r.data.mode === 'interactive') {
         battleId = r.data.battleId;
         mySide = r.data.side;
         window.GORZ_LAST_SIDE = mySide;
-        if (r.data.vsAi) setStatus('در برابر هوش مصنوعی — نوبت شما');
+        if (r.data.vsAi) setStatus('Versus AI — your turn');
         enterLive();
       } else {
         // legacy/auto-mode payload: full result in one shot
@@ -131,19 +131,19 @@
     } catch (err) {
       // maybe we already have a live battle -> resume it
       const resumed = await tryResume();
-      if (!resumed) setStatus(err.message || 'خطا در ورود به نبرد', true);
+      if (!resumed) setStatus(err.message || 'Failed to enter battle', true);
     } finally {
       if (btn) btn.disabled = false;
     }
   }
 
   async function openChallenge() {
-    setStatus('چالش باز شد؛ تا آمدن حریف منتظر بمان…');
+    setStatus('Challenge opened; waiting for an opponent to accept…');
     try {
       const r = await api('POST', '/battle/open');
-      if (!r.ok) throw new Error(r.data.error || 'خطا');
+      if (!r.ok) throw new Error(r.data.error || 'Error');
     } catch (err) {
-      setStatus(err.message || 'خطا', true);
+      setStatus(err.message || 'Error', true);
     }
   }
 
@@ -200,7 +200,7 @@
     main.innerHTML = `
       <div class="tac-wrap">
         <div class="tac-topbar">
-          <div class="tac-round num">دور <b>${fmtNum(v.round + 1)}</b> / ${fmtNum(v.maxRounds)}</div>
+          <div class="tac-round num">Round <b>${fmtNum(v.round + 1)}</b> / ${fmtNum(v.maxRounds)}</div>
           <div class="tac-powers">
             ${powerBar('you', v.powerFrac[sideKey(v)])}
             ${powerBar('foe', v.powerFrac[foeKey(v)])}
@@ -211,11 +211,11 @@
           <div class="tac-board" id="tac-board"></div>
         </div>
         <div class="tac-panel">
-          <div id="tac-hint" class="tac-hint">یک گروه از لشگرت را انتخاب کن.</div>
+          <div id="tac-hint" class="tac-hint">Select a squad from your army.</div>
           <div id="tac-controls" class="tac-controls"></div>
           <div class="tac-submit-row">
             <span id="tac-ready" class="tac-ready"></span>
-            <button id="tac-submit" class="btn btn-primary">ثبت دستورات</button>
+            <button id="tac-submit" class="btn btn-primary">Submit orders</button>
           </div>
         </div>
       </div>`;
@@ -225,16 +225,16 @@
     updateHint();
   }
 
-  const owns = (s) => (mySide === 'attacker' ? s.id.startsWith('ح') : s.id.startsWith('د'));
+  const owns = (s) => (mySide === 'attacker' ? s.id.startsWith('A') : s.id.startsWith('B'));
   const sideKey = (v) => v.you;
   const foeKey = (v) => (v.you === 'attacker' ? 'defender' : 'attacker');
 
   function powerBar(kind, frac) {
     const pct = Math.max(0, Math.min(100, Math.round((frac || 0) * 100)));
     return `<div class="tac-power tac-power-${kind}">
-      <span>${kind === 'you' ? 'قدرت تو' : 'حریف'}</span>
+      <span>${kind === 'you' ? 'Your power' : 'Opponent'}</span>
       <div class="tac-power-track"><div class="tac-power-fill ${kind}" style="width:${pct}%"></div></div>
-      <b class="num">${fmtNum(pct)}٪</b>
+      <b class="num">${fmtNum(pct)}%</b>
     </div>`;
   }
 
@@ -329,7 +329,7 @@
       <span class="tac-chip-icon">${TYPE_ICON[s.type] || '•'}</span>
       <span class="tac-chip-count num">${fmtNum(s.count)}</span>
       ${morBar}
-      ${s.routed ? '<span class="tac-rout-mark">فرار</span>' : ''}
+      ${s.routed ? '<span class="tac-rout-mark">Routed</span>' : ''}
     </div>`;
   }
 
@@ -471,7 +471,7 @@
           )
           .join('')}
       </div>
-      <button id="tac-clear" class="btn btn-sm">پاک‌کردن دستور</button>`;
+      <button id="tac-clear" class="btn btn-sm">Clear order</button>`;
     box.querySelectorAll('.tac-stance').forEach((b) =>
       b.addEventListener('click', () => {
         if (draft[selectedId]) draft[selectedId].stance = b.dataset.st;
@@ -491,18 +491,18 @@
     const h = el('tac-hint');
     if (!h || !view) return;
     if (view.submitted) {
-      h.textContent = 'دستورات این دور ثبت شده است؛ منتظر حریف…';
+      h.textContent = 'Orders for this round are locked in; waiting for the opponent…';
       return;
     }
     if (!selectedId) {
-      h.textContent = 'یک گروه از لشگرت را انتخاب کن، مقصد حرکت و حالت را تعیین کن؛ روی دشمنِ در تیرس کلیک کن تا هدفِ تمرکز آتش شود.';
+      h.textContent = 'Pick a squad, set its move destination and stance; click an enemy within range to mark it for focus fire.';
       return;
     }
     const s = view.squads.find((q) => q.id === selectedId);
     const d = draft[selectedId] || {};
     const bits = [];
-    bits.push(d.move ? `حرکت به (${fmtNum(d.move.x)},${fmtNum(d.move.y)})` : 'بدون حرکت');
-    bits.push(d.focus ? 'تمرکز آتش: ' + d.focus : 'بدون هدف‌گیری');
+    bits.push(d.move ? `Move to (${fmtNum(d.move.x)},${fmtNum(d.move.y)})` : 'No movement');
+    bits.push(d.focus ? 'Focus fire: ' + d.focus : 'No target');
     bits.push(STANCE_LABEL[d.stance] || '');
     h.textContent = `${TYPE_ICON[s.type]} ${s.name}: ` + bits.join(' · ');
   }
@@ -516,7 +516,7 @@
         stopCountdown();
         return;
       }
-      c.textContent = fmtNum(Math.max(0, secondsLeft)) + ' ثانیه';
+      c.textContent = fmtNum(Math.max(0, secondsLeft)) + 's';
       if (secondsLeft <= 0) {
         stopCountdown();
         submitOrders(); // auto-submit whatever was planned
@@ -537,10 +537,10 @@
     stopCountdown();
     try {
       const r = await api('POST', `/battle/orders/${battleId}`, { orders: draft });
-      if (!r.ok) throw new Error(r.data.error || 'خطا در ثبت دستورات');
+      if (!r.ok) throw new Error(r.data.error || 'Failed to submit orders');
       handleRoundResponse(r.data);
     } catch (err) {
-      setStatus(err.message || 'خطا', true);
+      setStatus(err.message || 'Error', true);
       startCountdown(10);
     }
   }
@@ -566,8 +566,8 @@
     if (data.waiting) {
       view = data.view || view;
       if (view) markSubmitted();
-      if (data.vsAi) setStatus('دستورات ثبت شد؛ هوش مصنوعی در حال حرکت…');
-      else setStatus('دستورها ثبت شد؛ در انتظار حریف…');
+      if (data.vsAi) setStatus('Orders submitted; the AI is moving…');
+      else setStatus('Orders submitted; waiting for the opponent…');
       return;
     }
     if (data.events) playRound(data);
@@ -576,7 +576,7 @@
   function markSubmitted() {
     view.submitted = true;
     const rd = el('tac-ready');
-    if (rd) rd.textContent = '✔ ثبت شد';
+    if (rd) rd.textContent = '✔ Submitted';
     const sb = el('tac-submit');
     if (sb) sb.disabled = true;
     selectedId = null;
@@ -603,12 +603,12 @@
       } else if (e.kind === 'strike') {
         flashChip(e.attacker, 'attacking');
         await wait(140);
-        damageChip(e.target, e.kills, e.charge ? 'حملهٔ سواران!' : e.volley ? 'رگبار' : '');
+        damageChip(e.target, e.kills, e.charge ? 'Cavalry charge!' : e.volley ? 'Volley' : '');
         await wait(420);
       } else if (e.kind === 'counter') {
         flashChip(e.attacker, 'attacking');
         await wait(120);
-        damageChip(e.target, e.kills, 'پاسخ');
+        damageChip(e.target, e.kills, 'Counter');
         await wait(380);
       } else if (e.kind === 'rout') {
         routChip(e.squad);
@@ -659,13 +659,8 @@
     // shrink the count label proportionally (visual only)
     const cnt = ch.querySelector('.tac-chip-count');
     if (cnt && kills > 0) {
-      // Persian digits: convert back to a number, subtract, re-render
-      const fa = '۰۱۲۳۴۵۶۷۸۹';
-      let n = 0;
-      for (const chr of cnt.textContent) {
-        const i = fa.indexOf(chr);
-        if (i >= 0) n = n * 10 + i;
-      }
+      // parse the rendered count back to a number, subtract, re-render
+      const n = parseInt(cnt.textContent.replace(/[^0-9]/g, ''), 10) || 0;
       const next = Math.max(0, n - Math.round(kills));
       cnt.textContent = fmtNum(next);
     }
@@ -677,7 +672,7 @@
     ch.classList.add('routed');
     const m = document.createElement('span');
     m.className = 'tac-rout-mark';
-    m.textContent = 'فرار';
+    m.textContent = 'Routed';
     ch.appendChild(m);
   }
 
@@ -700,12 +695,12 @@
     const rew = res.rewards || {};
 
     let outcomeClass = 'draw';
-    let outcomeText = 'تساوی';
+    let outcomeText = 'Draw';
     if (res.myOutcome) {
       outcomeClass = res.myOutcome;
-      outcomeText = res.myOutcome === 'win' ? 'پیروزی!' : res.myOutcome === 'lose' ? 'شکست' : 'تساوی';
+      outcomeText = res.myOutcome === 'win' ? 'Victory!' : res.myOutcome === 'lose' ? 'Defeat' : 'Draw';
     } else if (winner === 'attacker' || winner === 'defender') {
-      outcomeText = winner === 'attacker' ? 'پیروزی مهاجم' : 'پیروزی مدافع';
+      outcomeText = winner === 'attacker' ? 'Attacker wins' : 'Defender wins';
     }
 
     const casList = (m) =>
@@ -718,28 +713,28 @@
     const rewMine = mySideOrGuess(res);
     const rewardBox = rewMine && rew[rewMine]
       ? `<div class="tac-rewards">
-          <h4>پاداش‌های شما</h4>
-          <p>طلا: <b class="num">${fmtNum(rew[rewMine].gold)}</b> · تجربه: <b class="num">${fmtNum(rew[rewMine].xp)}</b></p>
+          <h4>Your rewards</h4>
+          <p>Gold: <b class="num">${fmtNum(rew[rewMine].gold)}</b> · XP: <b class="num">${fmtNum(rew[rewMine].xp)}</b></p>
         </div>`
       : '';
 
     main.innerHTML = `
       <div class="battle-result ${outcomeClass}">
         <div class="tac-final-banner">${outcomeText}</div>
-        <p class="tac-reason">${reasonFa(res.reason)}</p>
+        <p class="tac-reason">${reasonText(res.reason)}</p>
         <div class="armies">
           <div class="army-col">
-            <h4>تلفات مهاجم</h4>
+            <h4>Attacker casualties</h4>
             <ul class="army-list">${casList(cas.attacker)}</ul>
           </div>
           <div class="army-col">
-            <h4>تلفات مدافع</h4>
+            <h4>Defender casualties</h4>
             <ul class="army-list">${casList(cas.defender)}</ul>
           </div>
         </div>
         ${rewardBox}
         <details class="tac-log-details">
-          <summary>گزارش کامل نبرد (${fmtNum((res.log || []).length)} دور)</summary>
+          <summary>Full battle log (${fmtNum((res.log || []).length)} rounds)</summary>
           ${roundLogHtml(res.log)}
         </details>
       </div>`;
@@ -754,14 +749,14 @@
     return null;
   }
 
-  function reasonFa(reason) {
+  function reasonText(reason) {
     const map = {
-      'army routed': 'لشگر حریف منهدم شد',
-      'mutual collapse': 'هر دو لشگر در هم شکستند',
-      exhausted: 'نبرد بی‌نتیجه پایان یافت',
-      'enemy destroyed': 'دشمن نابود شد',
-      'decisive on points': 'برتری در پایان نبرد',
-      annihilation: 'نابودی متقابل',
+      'army routed': 'The enemy army was routed',
+      'mutual collapse': 'Both armies collapsed',
+      exhausted: 'The battle ended indecisively',
+      'enemy destroyed': 'The enemy was destroyed',
+      'decisive on points': 'Decisive on points at battle end',
+      annihilation: 'Mutual annihilation',
     };
     return map[reason] || '';
   }
@@ -773,16 +768,16 @@
         const evs = (t.events || [])
           .map((e) => {
             if (e.kind === 'strike')
-              return `<li class="ev-${e.side}">${e.charge ? '⚡ ' : ''}${e.attacker} ← ${e.target}: <b class="num">${e.kills}</b> تلفات${e.volley ? ' (رگبار)' : ''}</li>`;
+              return `<li class="ev-${e.side}">${e.charge ? '⚡ ' : ''}${e.attacker} ← ${e.target}: <b class="num">${e.kills}</b> kills${e.volley ? ' (volley)' : ''}</li>`;
             if (e.kind === 'counter')
-              return `<li class="ev-${e.side}">پاسخ ${e.attacker} ← ${e.target}: <b class="num">${e.kills}</b></li>`;
-            if (e.kind === 'move') return `<li class="ev-none">${e.squad} حرکت کرد</li>`;
-            if (e.kind === 'rout') return `<li class="ev-defender">🏳 ${e.squad} از میدان گریخت</li>`;
-            if (e.kind === 'end') return `<li class="ev-attacker"><b>پایان نبرد</b></li>`;
+              return `<li class="ev-${e.side}">Counter ${e.attacker} ← ${e.target}: <b class="num">${e.kills}</b></li>`;
+            if (e.kind === 'move') return `<li class="ev-none">${e.squad} moved</li>`;
+            if (e.kind === 'rout') return `<li class="ev-defender">🏳 ${e.squad} fled the field</li>`;
+            if (e.kind === 'end') return `<li class="ev-attacker"><b>Battle over</b></li>`;
             return '';
           })
           .join('');
-        return `<li class="turn"><strong>دور ${fmtNum(t.round !== undefined ? t.round : t.turn)}</strong><ul>${evs}</ul></li>`;
+        return `<li class="turn"><strong>Round ${fmtNum(t.round !== undefined ? t.round : t.turn)}</strong><ul>${evs}</ul></li>`;
       })
       .join('')}</ul></div>`;
   }
@@ -798,24 +793,24 @@
       const data = await res.json();
       if (!data.ok) return;
       wrap.innerHTML = data.battles.length
-        ? `<h4>تاریخچه نبردها</h4><ul class="hist-list">${data.battles
+        ? `<h4>Battle history</h4><ul class="hist-list">${data.battles
             .map((b) => {
               const label =
                 b.state === 'finished'
                   ? b.winner_id
-                    ? 'پایان‌یافته'
-                    : 'تساوی'
+                    ? 'Finished'
+                    : 'Draw'
                   : b.state === 'open'
-                  ? 'در انتظار حریف'
-                  : 'در جریان';
+                  ? 'Waiting for opponent'
+                  : 'In progress';
               return `<li class="hist-item">
-                <span class="hist-id">نبرد #${b.id}</span>
+                <span class="hist-id">Battle #${b.id}</span>
                 <span class="hist-state">${label}</span>
                 <span class="hist-time">${b.created_at || ''}</span>
               </li>`;
             })
             .join('')}</ul>`
-        : '<p class="empty">هنوز نبردی نداشته‌اید.</p>';
+        : '<p class="empty">You have not fought any battles yet.</p>';
     } catch { /* ignore */ }
   }
 

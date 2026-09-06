@@ -1,12 +1,13 @@
 'use strict';
 // ============================================================
-// Gorz Reborn — agent/registry.js
+// Gorz Reborn - agent/registry.js
 // Persistent storage of agent records + genome + fitness.
 //
-// agents table:
+//   agents table:
 //   id           INTEGER PK
 //   user_id      INTEGER (FK -> users.id, the commander's row)
 //   lineage      TEXT  (e.g. "sparta")
+//   name         TEXT  NULL (display name, e.g. "genghis-wolf")
 //   generation   INTEGER
 //   parent_a_id  INTEGER NULL
 //   parent_b_id  INTEGER NULL
@@ -30,6 +31,7 @@ function ensureSchema() {
       id                INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       lineage           TEXT NOT NULL DEFAULT 'sparta',
+      name              TEXT,
       generation        INTEGER NOT NULL DEFAULT 1,
       parent_a_id       INTEGER,
       parent_b_id       INTEGER,
@@ -47,6 +49,15 @@ function ensureSchema() {
     CREATE INDEX IF NOT EXISTS idx_agents_lineage ON agents(lineage, generation);
     CREATE INDEX IF NOT EXISTS idx_agents_fitness ON agents(fitness DESC);
   `);
+  // Migration: databases created before the `name` column existed.
+  // CREATE TABLE IF NOT EXISTS is a no-op on an existing table, so the
+  // column must be added explicitly (SQLite has no IF NOT EXISTS for
+  // ADD COLUMN; the duplicate error is swallowed instead).
+  try {
+    db.exec(`ALTER TABLE agents ADD COLUMN name TEXT`);
+  } catch (e) {
+    if (!/duplicate column/i.test(String(e && e.message))) throw e;
+  }
 }
 ensureSchema();
 
@@ -56,6 +67,7 @@ function rowToAgent(row) {
     id: row.id,
     userId: row.user_id,
     lineage: row.lineage,
+    name: row.name || null,
     generation: row.generation,
     parentAId: row.parent_a_id,
     parentBId: row.parent_b_id,
@@ -73,12 +85,12 @@ function rowToAgent(row) {
   };
 }
 
-function create({ userId, lineage = 'sparta', generation = 1, parentAId = null, parentBId = null, genome }) {
+function create({ userId, lineage = 'sparta', name = null, generation = 1, parentAId = null, parentBId = null, genome }) {
   const stmt = db.prepare(
-    `INSERT INTO agents (user_id, lineage, generation, parent_a_id, parent_b_id, genome_json)
-     VALUES (?, ?, ?, ?, ?, ?)`
+    `INSERT INTO agents (user_id, lineage, name, generation, parent_a_id, parent_b_id, genome_json)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
   );
-  const info = stmt.run(userId, lineage, generation, parentAId, parentBId, JSON.stringify(genome));
+  const info = stmt.run(userId, lineage, name, generation, parentAId, parentBId, JSON.stringify(genome));
   return getById(info.lastInsertRowid);
 }
 

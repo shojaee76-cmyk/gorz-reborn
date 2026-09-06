@@ -51,7 +51,7 @@ io.use((socket, next) => {
 //   - battle:joined   { battleId, state }  (battle state for the joining player)
 //   - battle:finished { full result }      (from server/game/battles.js)
 io.on('connection', (socket) => {
-  socket.emit('hello', { game: 'gorz-reborn', msg: 'به گرز نو خوش آمدید' });
+  socket.emit('hello', { game: 'gorz-reborn', msg: 'Welcome to Gorz Reborn' });
 
   const session = socket.request.session;
   const userId = session && session.userId;
@@ -65,12 +65,12 @@ io.on('connection', (socket) => {
   socket.on('battle:join', (data, ack) => {
     const battleId = Number((data && data.battleId) || NaN);
     if (!Number.isInteger(battleId)) {
-      if (typeof ack === 'function') ack({ ok: false, error: 'شناسه نبرد نامعتبر است.' });
+      if (typeof ack === 'function') ack({ ok: false, error: 'Invalid battle id.' });
       return;
     }
     const b = db.prepare('SELECT * FROM battles WHERE id = ?').get(battleId);
     if (!b || (b.attacker_id !== userId && b.defender_id !== userId)) {
-      if (typeof ack === 'function') ack({ ok: false, error: 'شما در این نبرد شرکت ندارید.' });
+      if (typeof ack === 'function') ack({ ok: false, error: 'You are not a participant in this battle.' });
       return;
     }
     socket.join(`battle:${battleId}`);
@@ -91,7 +91,7 @@ io.on('connection', (socket) => {
       const result = battles.enterBattle(userId);
       if (typeof ack === 'function') ack({ ok: true, ...result });
     } catch (err) {
-      if (typeof ack === 'function') ack({ ok: false, error: err.faMessage || err.message || 'خطای نبرد.' });
+      if (typeof ack === 'function') ack({ ok: false, error: err.faMessage || err.message || 'Battle error.' });
     }
   });
 
@@ -104,7 +104,7 @@ io.on('connection', (socket) => {
       const result = battles.getLiveView(userId, battleId);
       if (typeof ack === 'function') ack({ ok: true, ...result });
     } catch (err) {
-      if (typeof ack === 'function') ack({ ok: false, error: err.faMessage || err.message || 'خطا.' });
+      if (typeof ack === 'function') ack({ ok: false, error: err.faMessage || err.message || 'Error.' });
     }
   });
 
@@ -119,7 +119,7 @@ io.on('connection', (socket) => {
       );
       if (typeof ack === 'function') ack({ ok: true, ...result });
     } catch (err) {
-      if (typeof ack === 'function') ack({ ok: false, error: err.faMessage || err.message || 'خطا.' });
+      if (typeof ack === 'function') ack({ ok: false, error: err.faMessage || err.message || 'Error.' });
     }
   });
 });
@@ -145,7 +145,7 @@ setInterval(() => {
 }, 15 * 1000).unref();
 
 server.listen(PORT, () => {
-  console.log(`گرز نو (Gorz Reborn) running on http://localhost:${PORT}`);
+  console.log(`Gorz Reborn running on http://localhost:${PORT}`);
 });
 
 module.exports = { app, server, io, db };

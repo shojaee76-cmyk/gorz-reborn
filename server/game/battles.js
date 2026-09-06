@@ -59,7 +59,7 @@ function buildAiSide(level) {
     { type: 'archer',     count: Math.round(4 * scale), attack: 22, defense: 10, knowledge_level: 0 },
     { type: 'cavalry',    count: Math.round(2 * scale), attack: 26, defense: 16, knowledge_level: 0 },
   ];
-  const hero = { id: 0, name: 'واشر', level: lvl, ...heroes.modifier({ level: lvl }) };
+  const hero = { id: 0, name: 'Vanguard', level: lvl, ...heroes.modifier({ level: lvl }) };
   const side = tactics.buildSide(AI_USER_ID, hero, rows);
   side.user = { id: AI_USER_ID, email: 'ai@bot.local', level: lvl };
   return side;
@@ -137,14 +137,14 @@ function assertNotInBattle(userId) {
   const inBattle = db
     .prepare("SELECT id FROM battles WHERE (attacker_id = ? OR defender_id = ?) AND state IN ('open','running')")
     .get(userId, userId);
-  if (inBattle) throw new GameError(400, 'شما هم‌اکنون در یک نبرد هستید.');
+  if (inBattle) throw new GameError(400, 'You are already in a battle.');
 }
 
 // ---------------- side building ----------------
 // Snapshot a user's army (+best hero) into tactics.buildSide rows.
 function buildTacticsSide(userId) {
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
-  if (!user) throw new GameError(404, 'کاربر یافت نشد.');
+  if (!user) throw new GameError(404, 'User not found.');
   const bestHero = heroes.list(userId)[0] || null;
   const hero = bestHero
     ? { id: bestHero.id, name: bestHero.name, level: bestHero.level, ...heroes.modifier(bestHero) }
@@ -294,7 +294,7 @@ function enterBattle(userId) {
   assertNotInBattle(userId);
 
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
-  if (!user) throw new GameError(404, 'کاربر یافت نشد.');
+  if (!user) throw new GameError(404, 'User not found.');
 
   const opp = findOpponent(user.id, user.level);
   let battleId;
@@ -385,17 +385,17 @@ function enterBattle(userId) {
 
 // Submit this round's orders for one side. Resolves when both are in.
 function submitOrders(userId, battleId, rawOrders) {
-  if (!INTERACTIVE) throw new GameError(400, 'این نبرد در حالت خودکار است.');
+  if (!INTERACTIVE) throw new GameError(400, 'This battle runs in auto mode.');
   sweepDeadlines();
 
   const live = loadLiveBattle(Number(battleId));
-  if (!live) throw new GameError(404, 'نبرد جاری یافت نشد.');
+  if (!live) throw new GameError(404, 'No live battle found.');
   const { row, state, orders } = live;
   if (row.attacker_id !== userId && row.defender_id !== userId) {
-    throw new GameError(403, 'شما در این نبرد شرکت ندارید.');
+    throw new GameError(403, 'You are not a participant in this battle.');
   }
   const side = row.attacker_id === userId ? 'attacker' : 'defender';
-  if (orders[side]) throw new GameError(400, 'دستورات این دور ثبت شده است؛ منتظر حریف باشید.');
+  if (orders[side]) throw new GameError(400, 'Orders for this round are already submitted; wait for your opponent.');
 
   orders[side] = tactics.validateOrders(state, side, rawOrders || {});
 
@@ -445,13 +445,13 @@ function submitOrders(userId, battleId, rawOrders) {
 function getLiveView(userId, battleId) {
   sweepDeadlines();
   const b = db.prepare('SELECT * FROM battles WHERE id = ?').get(Number(battleId));
-  if (!b) throw new GameError(404, 'نبرد یافت نشد.');
+  if (!b) throw new GameError(404, 'Battle not found.');
   if (b.attacker_id !== userId && b.defender_id !== userId) {
-    throw new GameError(403, 'شما در این نبرد شرکت ندارید.');
+    throw new GameError(403, 'You are not a participant in this battle.');
   }
   if (b.state !== 'running') return battleStatus(battleId, userId);
   const live = loadLiveBattle(b.id);
-  if (!live) throw new GameError(500, 'وضعیت نبرد خراب است.');
+  if (!live) throw new GameError(500, 'Battle state is corrupt.');
   const side = b.attacker_id === userId ? 'attacker' : 'defender';
   const submitted =
     live.orders[side] != null;
@@ -688,7 +688,7 @@ function finalizeBattle(row, state, orders, clearedOrders, outcome) {
           : { gold: BATTLE.reward.loseGold, xp: BATTLE.reward.loseXp, outcome: 'lose' };
 
       const user = db.prepare('SELECT * FROM users WHERE id = ?').get(uid);
-      adjust(uid, { gold: reward.gold, kind: 'battle', note: `نتیجه نبرد: ${reward.outcome}` });
+      adjust(uid, { gold: reward.gold, kind: 'battle', note: `Battle result: ${reward.outcome}` });
 
       // commander XP
       let xp = user.xp + Math.max(0, Math.floor(reward.xp));
@@ -702,7 +702,7 @@ function finalizeBattle(row, state, orders, clearedOrders, outcome) {
       if (level >= 100) xp = 0;
       db.prepare('UPDATE users SET xp = ?, level = ? WHERE id = ?').run(xp, level, uid);
       if (levelUps > 0) {
-        adjust(uid, { gold: levelUps * 200, diamonds: levelUps * 10, kind: 'levelup', note: `ارتقای فرمانده به سطح ${level}` });
+        adjust(uid, { gold: levelUps * 200, diamonds: levelUps * 10, kind: 'levelup', note: `Commander leveled up to ${level}` });
       }
       const leveled = { xp, level, levelUps };
 
@@ -813,9 +813,9 @@ function openChallenge(userId) {
 // ---------------- status/history (compat) ----------------
 function battleStatus(battleId, requesterId) {
   const b = db.prepare('SELECT * FROM battles WHERE id = ?').get(Number(battleId));
-  if (!b) throw new GameError(404, 'نبرد یافت نشد.');
+  if (!b) throw new GameError(404, 'Battle not found.');
   if (b.attacker_id !== requesterId && b.defender_id !== requesterId) {
-    throw new GameError(403, 'شما در این نبرد شرکت ندارید.');
+    throw new GameError(403, 'You are not a participant in this battle.');
   }
   let parsed = null;
   if (b.log_json) {

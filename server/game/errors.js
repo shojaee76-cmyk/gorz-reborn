@@ -1,5 +1,5 @@
 'use strict';
-// Small helper: HTTP-level error with a Persian message.
+// Small helper: HTTP-level error with a user-facing message.
 class GameError extends Error {
   constructor(status, faMessage, extra) {
     super(faMessage);

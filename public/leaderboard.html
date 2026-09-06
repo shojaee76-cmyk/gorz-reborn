@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="fa" dir="rtl">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>گرز نو — جدول فرماندهان</title>
-  <meta name="description" content="جدول زندهٔ فرماندهان گرز نو — رتبه‌بندی، تاکتیک‌ها و ترکیب ارتش." />
+  <title>Gorz Reborn — Commander Leaderboard</title>
+  <meta name="description" content="Live leaderboard of Gorz Reborn commanders — ranking, tactics and army composition." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='0.9em' font-size='90'%3E%F0%9F%8F%86%3C/text%3E%3C/svg%3E" />
   <link rel="stylesheet" href="css/app.css" />
   <style>
@@ -28,7 +28,7 @@
     .lb-stat-value.accent { color: var(--accent-strong); }
     .lb-table-wrap { background: var(--bg-panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
     .lb-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-    .lb-table th { background: var(--bg-deep); color: var(--text-dim); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; padding: 14px 16px; text-align: right; border-bottom: 1px solid var(--line); }
+    .lb-table th { background: var(--bg-deep); color: var(--text-dim); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; padding: 14px 16px; text-align: left; border-bottom: 1px solid var(--line); }
     .lb-table td { padding: 14px 16px; border-bottom: 1px solid var(--line-soft); color: var(--text); vertical-align: middle; }
     .lb-table tr:last-child td { border-bottom: none; }
     .lb-table tr.lb-row { cursor: pointer; transition: background 0.12s; }
@@ -39,7 +39,7 @@
     .lb-id { font-family: 'JetBrains Mono', 'Consolas', monospace; font-size: 13px; color: var(--text-dim); }
     .lb-gen { display: inline-block; padding: 2px 8px; border-radius: 999px; background: var(--bg-deep); color: var(--text-dim); font-size: 11px; font-weight: 600; }
     .lb-fitness { font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
-    .lb-fitness .delta-good { color: var(--good); font-size: 11px; margin-inline-start: 4px; }
+    .lb-fitness .delta-good { color: var(--good); font-size: 11px; margin-left: 4px; }
     .lb-wld { font-variant-numeric: tabular-nums; color: var(--text-dim); font-size: 13px; }
     .lb-wld .w { color: var(--good); }
     .lb-wld .l { color: var(--bad); }
@@ -55,7 +55,7 @@
     .lb-tac-label { color: var(--text-faint); min-width: 32px; }
     .lb-tac-bar { flex: 1; height: 4px; background: var(--bg-deep); border-radius: 2px; overflow: hidden; }
     .lb-tac-bar .fill { display: block; height: 100%; background: var(--accent); }
-    .lb-tac-val { color: var(--text-dim); font-variant-numeric: tabular-nums; min-width: 28px; text-align: end; }
+    .lb-tac-val { color: var(--text-dim); font-variant-numeric: tabular-nums; min-width: 28px; text-align: right; }
     .lb-target { display: inline-block; padding: 1px 6px; border-radius: 4px; background: var(--bg-deep); color: var(--text-dim); font-size: 11px; font-family: 'JetBrains Mono', monospace; }
     .lb-empty { padding: 60px 20px; text-align: center; color: var(--text-dim); }
     .lb-empty .emoji { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
@@ -63,7 +63,7 @@
     /* ==================== detail panel ==================== */
     .lb-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; z-index: 50; }
     .lb-overlay.open { display: block; }
-    .lb-panel { position: fixed; top: 0; bottom: 0; left: 0; width: 480px; max-width: 100vw; background: var(--bg); border-right: 1px solid var(--line); overflow-y: auto; transform: translateX(-100%); transition: transform 0.2s; z-index: 51; padding: 24px; box-sizing: border-box; }
+    .lb-panel { position: fixed; top: 0; bottom: 0; right: 0; width: 480px; max-width: 100vw; background: var(--bg); border-left: 1px solid var(--line); overflow-y: auto; transform: translateX(100%); transition: transform 0.2s; z-index: 51; padding: 24px; box-sizing: border-box; }
     .lb-panel.open { transform: translateX(0); }
     .lb-panel h2 { font-size: 20px; color: var(--text); margin: 0 0 8px; }
     .lb-panel .meta { color: var(--text-dim); font-size: 13px; margin-bottom: 20px; }
@@ -73,7 +73,7 @@
     .lb-kv .k { color: var(--text-dim); }
     .lb-kv .v { color: var(--text); font-family: 'JetBrains Mono', monospace; }
     .lb-fp { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); word-break: break-all; padding: 10px; background: var(--bg-deep); border-radius: 6px; line-height: 1.5; }
-    .lb-close { position: absolute; top: 16px; left: 16px; background: var(--bg-panel); color: var(--text-dim); border: 1px solid var(--line); width: 32px; height: 32px; border-radius: 8px; cursor: pointer; font-size: 16px; }
+    .lb-close { position: absolute; top: 16px; right: 16px; background: var(--bg-panel); color: var(--text-dim); border: 1px solid var(--line); width: 32px; height: 32px; border-radius: 8px; cursor: pointer; font-size: 16px; }
     .lb-close:hover { color: var(--text); border-color: var(--accent-line); }
 
     .lb-loading { text-align: center; padding: 40px; color: var(--text-dim); }
@@ -88,22 +88,22 @@
   <main class="lb-shell">
     <header class="lb-header">
       <div>
-        <h1 class="lb-title">🏆 جدول <span class="ember">فرماندهان</span></h1>
-        <p class="lb-subtitle">رده‌بندی زندهٔ عامل‌های گرز نو — تکامل خودکار با الگوریتم Elo.</p>
+        <h1 class="lb-title">🏆 Commander <span class="ember">Leaderboard</span></h1>
+        <p class="lb-subtitle">Live ranking of Gorz Reborn agents — self-evolving via the Elo algorithm.</p>
       </div>
       <div class="lb-controls">
-        <select id="lineage-select" class="lb-select" aria-label="انتخاب تبار">
-          <option value="">همهٔ تبارها</option>
+        <select id="lineage-select" class="lb-select" aria-label="Select lineage">
+          <option value="">All lineages</option>
         </select>
-        <button id="refresh-btn" class="lb-btn primary" type="button">↻ به‌روزرسانی</button>
+        <button id="refresh-btn" class="lb-btn primary" type="button">↻ Refresh</button>
       </div>
     </header>
 
     <section class="lb-stats" id="stats-grid">
-      <div class="lb-stat"><div class="lb-stat-label">تبار انتخاب‌شده</div><div class="lb-stat-value" id="stat-lineage">—</div></div>
-      <div class="lb-stat"><div class="lb-stat-label">تعداد عامل‌ها</div><div class="lb-stat-value accent" id="stat-count">—</div></div>
-      <div class="lb-stat"><div class="lb-stat-label">میانگین تناسب</div><div class="lb-stat-value" id="stat-avg">—</div></div>
-      <div class="lb-stat"><div class="lb-stat-label">بالاترین نسل</div><div class="lb-stat-value" id="stat-gen">—</div></div>
+      <div class="lb-stat"><div class="lb-stat-label">Selected lineage</div><div class="lb-stat-value" id="stat-lineage">—</div></div>
+      <div class="lb-stat"><div class="lb-stat-label">Agent count</div><div class="lb-stat-value accent" id="stat-count">—</div></div>
+      <div class="lb-stat"><div class="lb-stat-label">Average fitness</div><div class="lb-stat-value" id="stat-avg">—</div></div>
+      <div class="lb-stat"><div class="lb-stat-label">Highest generation</div><div class="lb-stat-value" id="stat-gen">—</div></div>
     </section>
 
     <div class="lb-table-wrap">
@@ -111,31 +111,31 @@
         <thead>
           <tr>
             <th>#</th>
-            <th>شناسه</th>
-            <th>نسل</th>
-            <th>تناسب</th>
-            <th>پیروزی/باخت/مساوی</th>
-            <th>ترکیب ارتش</th>
-            <th>تاکتیک‌ها</th>
-            <th>هدف</th>
+            <th>ID</th>
+            <th>Gen</th>
+            <th>Fitness</th>
+            <th>Win/Loss/Draw</th>
+            <th>Army composition</th>
+            <th>Tactics</th>
+            <th>Target</th>
           </tr>
         </thead>
         <tbody id="lb-tbody">
-          <tr><td colspan="8" class="lb-loading">در حال بارگذاری</td></tr>
+          <tr><td colspan="8" class="lb-loading">Loading</td></tr>
         </tbody>
       </table>
     </div>
 
     <p class="lb-tick" id="last-tick" style="margin-top:12px; text-align:end;">
-      <span class="lb-pulse"></span> زنده — هر ۱۰ ثانیه
+      <span class="lb-pulse"></span> Live — every 10 seconds
     </p>
   </main>
 
   <div class="lb-overlay" id="overlay"></div>
   <aside class="lb-panel" id="detail-panel">
-    <button class="lb-close" id="close-btn" type="button" aria-label="بستن">✕</button>
+    <button class="lb-close" id="close-btn" type="button" aria-label="Close">✕</button>
     <div id="detail-body">
-      <div class="lb-loading">در حال بارگذاری</div>
+      <div class="lb-loading">Loading</div>
     </div>
   </aside>
 
@@ -175,9 +175,9 @@
         const sel = $('#lineage-select');
         const prev = selected.lineage;
         // rebuild options
-        const opts = ['<option value="">همهٔ تبارها</option>'];
+        const opts = ['<option value="">All lineages</option>'];
         for (const l of (data.lineages || [])) {
-          opts.push(`<option value="${l.lineage}">${l.lineage} — ${l.n} عامل، میانگین ${fmt(l.avg_fitness)}</option>`);
+          opts.push(`<option value="${l.lineage}">${l.lineage} — ${l.n} agents, avg ${fmt(l.avg_fitness)}</option>`);
         }
         sel.innerHTML = opts.join('');
         if (prev && (data.lineages || []).some(l => l.lineage === prev)) {
@@ -211,12 +211,12 @@
       const c = Math.round((comp.cavalry || 0) * 100);
       return `
         <div>
-          <div class="lb-comp" aria-label="ترکیب ارتش">
+          <div class="lb-comp" aria-label="Army composition">
             <div class="seg s" style="width:${s}%"></div>
             <div class="seg a" style="width:${a}%"></div>
             <div class="seg c" style="width:${c}%"></div>
           </div>
-          <div class="lb-comp-label">${s}٪ شمشیرزن · ${a}٪ کمان‌دار · ${c}٪ سوار</div>
+          <div class="lb-comp-label">${s}% swordsman · ${a}% archer · ${c}% cavalry</div>
         </div>
       `;
     }
@@ -230,7 +230,7 @@
       ];
       return `<div class="lb-tactics">${rows.map(([k, v, full]) => {
         const p = Math.round(Number(v || 0) * 100);
-        return `<div class="lb-tac" title="${full}: ${p}٪">
+        return `<div class="lb-tac" title="${full}: ${p}%">
           <span class="lb-tac-label">${k}</span>
           <span class="lb-tac-bar"><span class="fill" style="width:${p}%"></span></span>
           <span class="lb-tac-val">${p}</span>
@@ -245,8 +245,8 @@
       if (!agents.length) {
         tbody.innerHTML = `<tr><td colspan="8"><div class="lb-empty">
           <div class="emoji">🥁</div>
-          <div>هنوز هیچ عاملی در این تبار نیست.</div>
-          <div style="margin-top:8px; font-size:12px;">یک مسابقه اجرا کن: <code>node server/agent/run-tournament.js &lt;lineage&gt; 8 4</code></div>
+          <div>No agents in this lineage yet.</div>
+          <div style="margin-top:8px; font-size:12px;">Run a tournament: <code>node server/agent/run-tournament.js &lt;lineage&gt; 8 4</code></div>
         </div></td></tr>`;
         return;
       }
@@ -268,7 +268,7 @@
     }
 
     function renderStats(agents, lineageStats) {
-      $('#stat-lineage').textContent = selected.lineage || 'همه';
+      $('#stat-lineage').textContent = selected.lineage || 'All';
       $('#stat-count').textContent = agents.length;
       if (agents.length) {
         const avg = agents.reduce((s, a) => s + (a.fitness || 0), 0) / agents.length;
@@ -285,7 +285,7 @@
     async function openDetail(id) {
       $('#detail-panel').classList.add('open');
       $('#overlay').classList.add('open');
-      $('#detail-body').innerHTML = '<div class="lb-loading">در حال بارگذاری</div>';
+      $('#detail-body').innerHTML = '<div class="lb-loading">Loading</div>';
       try {
         const data = await fetchJSON('/api/agent/genome/' + id);
         const a = data.agent;
@@ -294,51 +294,51 @@
         const tac = g.tactics;
         const train = g.training;
         $('#detail-body').innerHTML = `
-          <h2>فرماندهٔ #${a.id}</h2>
-          <div class="meta">تبار <strong>${a.lineage}</strong> · نسل G${a.generation} · والد: ${a.parentAId ? 'id ' + a.parentAId : '—'}</div>
+          <h2>Commander #${a.id}</h2>
+          <div class="meta">Lineage <strong>${a.lineage}</strong> · generation G${a.generation} · parent: ${a.parentAId ? 'id ' + a.parentAId : '—'}</div>
 
           <div class="lb-section">
-            <h3>رکورد</h3>
-            <div class="lb-kv"><span class="k">تناسب Elo</span><span class="v">${fmt(a.fitness)}</span></div>
-            <div class="lb-kv"><span class="k">پیروزی</span><span class="v">${a.wins}</span></div>
-            <div class="lb-kv"><span class="k">باخت</span><span class="v">${a.losses}</span></div>
-            <div class="lb-kv"><span class="k">مساوی</span><span class="v">${a.draws}</span></div>
-            <div class="lb-kv"><span class="k">پیروزی قاطع</span><span class="v">${a.decisiveWins}</span></div>
-            <div class="lb-kv"><span class="k">میانگین دورهای زنده‌مانده</span><span class="v">${fmt(a.avgRoundsSurvived, 1)}</span></div>
+            <h3>Record</h3>
+            <div class="lb-kv"><span class="k">Elo fitness</span><span class="v">${fmt(a.fitness)}</span></div>
+            <div class="lb-kv"><span class="k">Wins</span><span class="v">${a.wins}</span></div>
+            <div class="lb-kv"><span class="k">Losses</span><span class="v">${a.losses}</span></div>
+            <div class="lb-kv"><span class="k">Draws</span><span class="v">${a.draws}</span></div>
+            <div class="lb-kv"><span class="k">Decisive wins</span><span class="v">${a.decisiveWins}</span></div>
+            <div class="lb-kv"><span class="k">Avg rounds survived</span><span class="v">${fmt(a.avgRoundsSurvived, 1)}</span></div>
           </div>
 
           <div class="lb-section">
-            <h3>ترکیب ارتش</h3>
-            <div class="lb-kv"><span class="k">شمشیرزن</span><span class="v">${pct(comp.swordsman)}٪</span></div>
-            <div class="lb-kv"><span class="k">کمان‌دار</span><span class="v">${pct(comp.archer)}٪</span></div>
-            <div class="lb-kv"><span class="k">سوار</span><span class="v">${pct(comp.cavalry)}٪</span></div>
+            <h3>Army composition</h3>
+            <div class="lb-kv"><span class="k">Swordsman</span><span class="v">${pct(comp.swordsman)}%</span></div>
+            <div class="lb-kv"><span class="k">Archer</span><span class="v">${pct(comp.archer)}%</span></div>
+            <div class="lb-kv"><span class="k">Cavalry</span><span class="v">${pct(comp.cavalry)}%</span></div>
           </div>
 
           <div class="lb-section">
-            <h3>آموزش</h3>
-            <div class="lb-kv"><span class="k">+ شمشیرزن</span><span class="v">+${train.swordsman}</span></div>
-            <div class="lb-kv"><span class="k">+ کمان‌دار</span><span class="v">+${train.archer}</span></div>
-            <div class="lb-kv"><span class="k">+ سوار</span><span class="v">+${train.cavalry}</span></div>
+            <h3>Training</h3>
+            <div class="lb-kv"><span class="k">+ swordsman</span><span class="v">+${train.swordsman}</span></div>
+            <div class="lb-kv"><span class="k">+ archer</span><span class="v">+${train.archer}</span></div>
+            <div class="lb-kv"><span class="k">+ cavalry</span><span class="v">+${train.cavalry}</span></div>
           </div>
 
           <div class="lb-section">
-            <h3>تاکتیک</h3>
-            <div class="lb-kv"><span class="k">تهاجم</span><span class="v">${pct(tac.aggression)}٪</span></div>
-            <div class="lb-kv"><span class="k">دفاع</span><span class="v">${pct(tac.defense)}٪</span></div>
-            <div class="lb-kv"><span class="k">شارژ سوار</span><span class="v">${pct(tac.cavalryCharge)}٪</span></div>
-            <div class="lb-kv"><span class="k">تمرکز آتش</span><span class="v">${pct(tac.focusFire)}٪</span></div>
-            <div class="lb-kv"><span class="k">درگیری دور</span><span class="v">${pct(tac.rangedEngage)}٪</span></div>
-            <div class="lb-kv"><span class="k">تصرف قلعه</span><span class="v">${pct(tac.keepCapture)}٪</span></div>
-            <div class="lb-kv"><span class="k">اولویت هدف</span><span class="v">${tac.targetPriority}</span></div>
+            <h3>Tactics</h3>
+            <div class="lb-kv"><span class="k">Aggression</span><span class="v">${pct(tac.aggression)}%</span></div>
+            <div class="lb-kv"><span class="k">Defense</span><span class="v">${pct(tac.defense)}%</span></div>
+            <div class="lb-kv"><span class="k">Cavalry charge</span><span class="v">${pct(tac.cavalryCharge)}%</span></div>
+            <div class="lb-kv"><span class="k">Focus fire</span><span class="v">${pct(tac.focusFire)}%</span></div>
+            <div class="lb-kv"><span class="k">Ranged engage</span><span class="v">${pct(tac.rangedEngage)}%</span></div>
+            <div class="lb-kv"><span class="k">Keep capture</span><span class="v">${pct(tac.keepCapture)}%</span></div>
+            <div class="lb-kv"><span class="k">Target priority</span><span class="v">${tac.targetPriority}</span></div>
           </div>
 
           <div class="lb-section">
-            <h3>اثر انگشت ژنوم</h3>
+            <h3>Genome fingerprint</h3>
             <div class="lb-fp">${a.fingerprint}</div>
           </div>
         `;
       } catch (e) {
-        $('#detail-body').innerHTML = `<div class="lb-empty"><div class="emoji">⚠️</div>بارگذاری ناموفق: ${e.message}</div>`;
+        $('#detail-body').innerHTML = `<div class="lb-empty"><div class="emoji">⚠️</div>Load failed: ${e.message}</div>`;
       }
     }
 
@@ -354,12 +354,12 @@
         renderRows(agents);
         renderStats(agents, null);
         const tick = new Date().toLocaleTimeString('en-US', { hour12: false });
-        $('#last-tick').innerHTML = `<span class="lb-pulse"></span> آخرین به‌روزرسانی: ${tick} — هر ۱۰ ثانیه`;
+        $('#last-tick').innerHTML = `<span class="lb-pulse"></span> Last update: ${tick} — every 10 seconds`;
       } catch (e) {
         $('#lb-tbody').innerHTML = `<tr><td colspan="8"><div class="lb-empty">
           <div class="emoji">⚠️</div>
-          <div>خطا در بارگذاری: ${e.message}</div>
-          <div style="margin-top:8px; font-size:12px;">سرور در <code>http://localhost:3000</code> در دسترس نیست؟</div>
+          <div>Load error: ${e.message}</div>
+          <div style="margin-top:8px; font-size:12px;">Is the server at <code>http://localhost:3000</code> unreachable?</div>
         </div></td></tr>`;
       }
     }

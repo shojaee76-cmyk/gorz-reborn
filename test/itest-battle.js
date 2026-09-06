@@ -27,7 +27,7 @@ async function api(method, p, body, cookie) {
 
   // A submits orders; expect waiting-for-opponent
   const ordersA = {};
-  for (const s of ent.data.view.squads.filter((s) => s.id.startsWith('ح'))) {
+  for (const s of ent.data.view.squads.filter((s) => s.id.startsWith('A'))) {
     ordersA[s.id] = { move: null, focus: null, stance: s.range > 1 ? 'hold' : 'advance' };
   }
   const subA = await api('POST', `/api/battle/orders/${bid}`, { orders: ordersA }, a.cookie);
@@ -37,7 +37,7 @@ async function api(method, p, body, cookie) {
   const liveB = await api('GET', `/api/battle/live/${bid}`, undefined, b.cookie);
   console.log('B live view ok:', liveB.status, '| B sees', liveB.data.view.squads.length, 'squads');
   const ordersB = {};
-  for (const s of liveB.data.view.squads.filter((s) => s.id.startsWith('د'))) {
+  for (const s of liveB.data.view.squads.filter((s) => s.id.startsWith('B'))) {
     ordersB[s.id] = { move: s.x === 4 ? { x: 4, y: s.y + 1 } : null, focus: null, stance: 'advance' };
   }
   const subB = await api('POST', `/api/battle/orders/${bid}`, { orders: ordersB }, b.cookie);
@@ -54,9 +54,9 @@ async function api(method, p, body, cookie) {
     const va = await api('GET', `/api/battle/live/${bid}`, undefined, a.cookie);
     if (va.data.state !== 'running') break;
     const oa = {}, ob = {};
-    for (const s of va.data.view.squads.filter((s) => s.id.startsWith('ح') && !s.routed)) oa[s.id] = { move: null, focus: null, stance: 'advance' };
+    for (const s of va.data.view.squads.filter((s) => s.id.startsWith('A') && !s.routed)) oa[s.id] = { move: null, focus: null, stance: 'advance' };
     const vb = await api('GET', `/api/battle/live/${bid}`, undefined, b.cookie);
-    for (const s of vb.data.view.squads.filter((s) => s.id.startsWith('د') && !s.routed)) ob[s.id] = { move: null, focus: null, stance: 'advance' };
+    for (const s of vb.data.view.squads.filter((s) => s.id.startsWith('B') && !s.routed)) ob[s.id] = { move: null, focus: null, stance: 'advance' };
     const r1 = await api('POST', `/api/battle/orders/${bid}`, { orders: oa }, a.cookie);
     const r2 = await api('POST', `/api/battle/orders/${bid}`, { orders: ob }, b.cookie);
     const res = r2.data.events ? r2.data : (r1.data.events ? r1.data : null);

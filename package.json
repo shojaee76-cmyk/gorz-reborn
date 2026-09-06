@@ -1,7 +1,7 @@
 {
   "name": "gorz-reborn",
   "version": "1.0.0",
-  "description": "گرز نو — browser-based Persian turn-based strategy game (rebuild of gorz.ir mechanics)",
+  "description": "Gorz Reborn — browser-based turn-based strategy game (rebuild of gorz.ir mechanics), agent-first",
   "main": "server/index.js",
   "type": "commonjs",
   "scripts": {

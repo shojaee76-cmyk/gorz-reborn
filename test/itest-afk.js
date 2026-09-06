@@ -16,7 +16,7 @@ async function api(method, p, body, cookie) {
   console.log('enter:', ent.status, ent.data.mode);
   if (ent.status !== 200) process.exit(1);
   const ordersA = {};
-  for (const s of ent.data.view.squads.filter((s) => s.id.startsWith('ح'))) ordersA[s.id] = { move: null, focus: null, stance: 'advance' };
+  for (const s of ent.data.view.squads.filter((s) => s.id.startsWith('A'))) ordersA[s.id] = { move: null, focus: null, stance: 'advance' };
   await api('POST', '/api/battle/orders/' + ent.data.battleId, { orders: ordersA }, a.cookie);
   console.log('waiting for AI deadline (3s timer + sweep)...');
   let done = false;

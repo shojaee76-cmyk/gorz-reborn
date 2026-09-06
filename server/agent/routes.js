@@ -1,6 +1,6 @@
 'use strict';
 // ============================================================
-// Gorz Reborn — agent/routes.js
+// Gorz Reborn - agent/routes.js
 // Agent API surface. Mounted at /api/agent/* by the main router.
 //
 // Endpoints:
@@ -55,6 +55,7 @@ function provisionAgent(name, lineage, genome) {
   const agent = registry.create({
     userId,
     lineage: lineage || 'sparta',
+    name: slug || null,
     generation: 1,
     genome: g,
   });
@@ -80,7 +81,7 @@ router.post('/register', wrap((req, res) => {
 }));
 
 router.get('/population', wrap((req, res) => {
-  // lineage is OPTIONAL — omitting it returns agents from ALL lineages,
+  // lineage is OPTIONAL - omitting it returns agents from ALL lineages,
   // ordered most-recent first (so the leaderboard page can show a global view).
   const lineage = req.query.lineage ? req.query.lineage.toString() : null;
   const includeRetired = req.query.include_retired === '1';
@@ -107,7 +108,7 @@ router.post('/duel', wrap((req, res) => {
   evolution.applyGenomeToUser(a.userId, a.genome);
   evolution.applyGenomeToUser(b.userId, b.genome);
   const result = evolution.duel(a, b, { seed: seed != null ? seed : Math.floor(Math.random() * 0xffffffff) });
-  // Persist Elo updates (mirror roundRobin logic) — otherwise /duel
+  // Persist Elo updates (mirror roundRobin logic) - otherwise /duel
   // returns results but never touches the leaderboard.
   const winnerId = result.winnerSide === 'attacker' ? a.id : (result.winnerSide === 'defender' ? b.id : null);
   const decisive = result.outcome && result.outcome.reason && result.outcome.reason !== 'exhausted' && result.outcome.reason !== 'safety cap';
@@ -143,6 +144,7 @@ router.post('/tournament', wrap(async (req, res) => {
       const a = registry.create({
         userId: uids[i],
         lineage,
+        name: `${lineage}-seed-${String(i + 1).padStart(2, '0')}`,
         generation: 1,
         genome: g,
       });

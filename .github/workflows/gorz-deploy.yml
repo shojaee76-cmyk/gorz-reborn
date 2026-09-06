@@ -1,0 +1,57 @@
+# ============================================================
+# Gorz Reborn - Netlify deploy of the static arena
+# Runs after gorz-battles commits a fresh public/arena/report.json
+# (workflow_run). Deploys the repo's public/ folder to the
+# gorz-reborn.netlify.app site via the Netlify API.
+# Required repo secrets (Settings > Secrets and variables > Actions):
+#   NETLIFY_AUTH_TOKEN - personal access token from app.netlify.com
+#   NETLIFY_SITE_ID    - 42b03194-ec37-4d46-8c7a-a704dcc88981
+# Does NOT rebuild the site (zip includes the report verbatim),
+# so it cannot trigger gorz-battles again: no CI loop.
+# ============================================================
+name: gorz-deploy
+
+on:
+  workflow_run:
+    workflows: [gorz-battles]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # gorz-battles pushed the report to master after this run started;
+          # always deploy the newest master instead of the triggering sha.
+          ref: master
+
+      - name: Deploy to Netlify
+        run: |
+          SITE="42b03194-ec37-4d46-8c7a-a704dcc88981"
+          echo "Deploying public/ to site $SITE"
+          # produce a zip of public/ (report.json included)
+          cd public
+          zip -qr ../public.zip .
+          cd ..
+          STATUS=$(curl -s -o /tmp/resp.json -w "%{http_code}" \
+            -X POST "https://api.netlify.com/api/v1/sites/${SITE}/deploys" \
+            -H "Authorization: Bearer ${{ secrets.NETLIFY_AUTH_TOKEN }}" \
+            -H "Content-Type: application/zip" \
+            --data-binary @public.zip)
+          echo "deploy create HTTP $STATUS"
+          cat /tmp/resp.json | head -c 400; echo
+          [ "$STATUS" = "200" ] || [ "$STATUS" = "201" ] || { echo "deploy failed"; exit 1; }
+          STATE=$(python3 -c "import json;d=json.load(open('/tmp/resp.json'));print(d.get('state','?'))")
+          echo "deploy state: $STATE"
+          case "$STATE" in
+            wait|processing|uploaded|ready) exit 0 ;;
+            *) echo "unexpected deploy state"; exit 1 ;;
+          esac

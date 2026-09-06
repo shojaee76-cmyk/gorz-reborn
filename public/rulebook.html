@@ -1,122 +1,122 @@
 <!DOCTYPE html>
-<html lang="fa" dir="rtl">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>کتاب قوانین — گرز نو</title>
+<title>Rulebook — Gorz Reborn</title>
 <style>
   :root {
     --bg: #14161a; --panel: #1d2026; --panel2: #23262d; --border: #33373f;
     --text: #e9e4d8; --muted: #9a958a; --ember: #e0924a; --gold: #f2c14e;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: Vazirmatn, 'Segoe UI', Tahoma, sans-serif; line-height: 2; padding: 30px 18px; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', Tahoma, sans-serif; line-height: 1.75; padding: 30px 18px; }
   .page { max-width: 860px; margin: 0 auto; }
   h1 { color: var(--ember); font-size: 26px; margin-bottom: 4px; }
   .sub { color: var(--muted); font-size: 13px; margin-bottom: 26px; }
-  h2 { color: var(--gold); font-size: 18px; margin: 28px 0 10px; border-inline-start: 4px solid var(--ember); padding-inline-start: 10px; }
+  h2 { color: var(--gold); font-size: 18px; margin: 28px 0 10px; border-left: 4px solid var(--ember); padding-left: 10px; }
   p, li { font-size: 14.5px; }
-  ul { padding-inline-start: 22px; margin: 8px 0; }
+  ul { padding-left: 22px; margin: 8px 0; }
   table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13.5px; }
-  th, td { border: 1px solid var(--border); padding: 8px 12px; text-align: right; }
+  th, td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; }
   th { background: var(--panel2); color: var(--ember); }
   td b.w { color: #6fbf73; } td b.l { color: #ff7b6b; }
   .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 18px 22px; margin: 14px 0; }
   code, pre { font-family: Consolas, monospace; direction: ltr; text-align: left; }
   code { background: var(--panel2); padding: 2px 7px; border-radius: 6px; font-size: 12.5px; color: var(--gold); }
   pre { background: #101216; border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; overflow-x: auto; font-size: 12.5px; line-height: 1.8; margin: 10px 0; color: #cfe3b8; }
-  .tag { display: inline-block; font-size: 11px; padding: 2px 9px; border-radius: 12px; background: var(--panel2); border: 1px solid var(--border); color: var(--muted); margin-inline-start: 8px; }
+  .tag { display: inline-block; font-size: 11px; padding: 2px 9px; border-radius: 12px; background: var(--panel2); border: 1px solid var(--border); color: var(--muted); margin-left: 8px; }
   a { color: var(--ember); }
   .doctrine li { margin-bottom: 6px; }
 </style>
 </head>
 <body>
 <div class="page">
-  <h1>⚔ کتاب قوانین گرز نو</h1>
-  <div class="sub">نسخه ۳ — «چهار قلعه» · برای بازیکنان، تماشاگران و عامل‌های هوش مصنوعی</div>
+  <h1>⚔ Gorz Reborn Rulebook</h1>
+  <div class="sub">Version 3 — "The Four Castles" · for players, spectators and AI agents</div>
 
   <div class="card">
-    <p><b>ایدهٔ بازی در یک جمله:</b> دو سپاه (هر کدام یک سردار + ۳ سپهبد) در نقشه‌ای متقارن با رودخانهٔ مرکزی و سه پل به نبرد می‌پردازند. چهار قلعه روی نقشه است: دو پایتخت و دو دژ خنثی. پایتخت دشمن را بگیر، یا هر دو دژ را ۳ راند نگه دار، یا ارتش دشمن را نابود کن.</p>
+    <p><b>The game in one sentence:</b> two armies (each one commander + 3 lieutenants) fight on a symmetric map with a central river and three bridges. There are four castles on the map: two capitals and two neutral keeps. Take the enemy capital, hold both keeps for 3 rounds, or destroy the enemy army.</p>
   </div>
 
-  <h2>🗺 نقشه</h2>
+  <h2>🗺 The map</h2>
   <table>
-    <tr><th>زمین</th><th>عبور</th><th>اثر</th></tr>
-    <tr><td>دشت</td><td>۱ MP</td><td>بدون اثر — زمین باز، شارژ سواره کار می‌کند</td></tr>
-    <tr><td>تپه</td><td>۱ MP</td><td><b class="w">+۱۵٪ حمله</b> برای مدافع تپه</td></tr>
-    <tr><td>جنگل</td><td>۱ MP</td><td><b class="w">+۳۵٪ دفاع</b> · شارژ سواره غیرممکن</td></tr>
-    <tr><td>جنگل انبوه</td><td>۲ MP</td><td><b class="w">+۵۰٪ دفاع</b> · شارژ غیرممکن · کند</td></tr>
-    <tr><td>آب</td><td class="l"><b>غیرقابل عبور</b></td><td>رودخانه و دریاچه — فقط تیرانداز می‌تواند از روی آن شلیک کند</td></tr>
-    <tr><td>پل</td><td>۱ MP</td><td>تنها گذرگاه رود · شارژ روی پل کار می‌کند · بدون پناه</td></tr>
-    <tr><td>کوه</td><td class="l"><b>غیرقابل عبور</b></td><td>صخره — مسیرها را شکل می‌دهد</td></tr>
-    <tr><td>قلعه</td><td>۱ MP</td><td>هدف قابل تصرف · <b class="w">+۴۰٪ دفاع</b> برای مالک</td></tr>
+    <tr><th>Terrain</th><th>Move cost</th><th>Effect</th></tr>
+    <tr><td>Plain</td><td>1 MP</td><td>No effect — open ground, cavalry charges work</td></tr>
+    <tr><td>Hill</td><td>1 MP</td><td><b class="w">+15% attack</b> for the defender on the hill</td></tr>
+    <tr><td>Forest</td><td>1 MP</td><td><b class="w">+35% defense</b> · no cavalry charge</td></tr>
+    <tr><td>Jungle</td><td>2 MP</td><td><b class="w">+50% defense</b> · no charge · slow</td></tr>
+    <tr><td>Water</td><td class="l"><b>Impassable</b></td><td>River and lakes — only archers can shoot across it</td></tr>
+    <tr><td>Bridge</td><td>1 MP</td><td>The only river crossing · charges work on bridges · no cover</td></tr>
+    <tr><td>Mountain</td><td class="l"><b>Impassable</b></td><td>Rock — shapes the routes</td></tr>
+    <tr><td>Castle</td><td>1 MP</td><td>Capturable objective · <b class="w">+40% defense</b> for its owner</td></tr>
   </table>
   <ul>
-    <li>نقشه <b>متقارن</b> است (چرخش ۱۸۰ درجه) — هیچ طرفی شانس بهتری ندارد.</li>
-    <li>رودخانه ستون مرکزی (x=10) است؛ سه پل در y=۳، ۷، ۱۱ تنها راه عبورند.</li>
-    <li>دریاچه‌ها ۳×۲ و کوه‌ها ۳×۳ در دو طرف، آینه‌ای همدیگر.</li>
+    <li>The map is <b>symmetric</b> (180° rotation) — neither side gets a better deal.</li>
+    <li>The river runs along the central column (x=10); the three bridges at y=3, 7, 11 are the only way across.</li>
+    <li>Lakes are 3×2 and mountains 3×3 on both sides, mirroring each other.</li>
   </ul>
 
-  <h2>🏰 قلعه‌ها</h2>
+  <h2>🏰 Castles</h2>
   <table>
-    <tr><th>قلعه</th><th>مختصات</th><th>مالک اولیه</th><th>نقش</th></tr>
-    <tr><td>قلعه باختر</td><td>(۱,۷)</td><td>حمله</td><td>پایتخت غرب — سقوطش = باخت فوری</td></tr>
-    <tr><td>قلعه خاور</td><td>(۱۹,۷)</td><td>دفاع</td><td>پایتخت شر — سقوطش = باخت فوری</td></tr>
-    <tr><td>دژ شمال</td><td>(۶,۳)</td><td>خنثی</td><td>هدف بزرگ کنار جادهٔ پل شمالی</td></tr>
-    <tr><td>دژ جنوب</td><td>(۱۴,۱۱)</td><td>خنثی</td><td>هدف بزرگ کنار جادهٔ پل جنوبی</td></tr>
+    <tr><th>Castle</th><th>Coordinates</th><th>Initial owner</th><th>Role</th></tr>
+    <tr><td>West Castle</td><td>(1,7)</td><td>Attacker</td><td>Western capital — losing it = instant defeat</td></tr>
+    <tr><td>East Castle</td><td>(19,7)</td><td>Defender</td><td>Eastern capital — losing it = instant defeat</td></tr>
+    <tr><td>North Keep</td><td>(6,3)</td><td>Neutral</td><td>Major objective beside the north bridge road</td></tr>
+    <tr><td>South Keep</td><td>(14,11)</td><td>Neutral</td><td>Major objective beside the south bridge road</td></tr>
   </table>
 
-  <h2>🎖 ساختار سپاه: سردار + ۳ سپهبد</h2>
-  <p>هر طرف دقیقاً ۴ گروه‌نظامی دارد:</p>
+  <h2>🎖 Army structure: commander + 3 lieutenants</h2>
+  <p>Each side has exactly 4 squads:</p>
   <ul>
-    <li><b>سردار (★)</b> — بزرگ‌ترین گروه، دارای ضریب قهرمان کامل.</li>
-    <li><b>۳ سپهبد</b> — ضریب ۰٫۸۵ (بدون هالهٔ قهرمان). برای عامل‌های AI هر سپهبد یک «زیرمجموعهٔ» مستقل است که دستور جدا می‌گیرد.</li>
+    <li><b>Commander (★)</b> — the largest squad, carrying the full hero multiplier.</li>
+    <li><b>3 lieutenants</b> — a 0.85 multiplier (no hero aura). For AI agents, each lieutenant is an independent subunit that receives its own orders.</li>
   </ul>
 
-  <h2>🎯 شرایط برد (به ترتیب بررسی)</h2>
-  <ol style="padding-inline-start:22px">
-    <li><b>سقوط پایتخت:</b> گروه دشمن پایان راند روی پایتخت تو بایستد → باخت فوری.</li>
-    <li><b>نابودی ارتش:</b> همهٔ گروه‌های یک طرف فرار کنند یا نابود شوند.</li>
-    <li><b>محاصره:</b> مالکیت <b>هر دو دژ خنثی</b> به مدت ۳ راند پیوسته → برد.</li>
-    <li><b>پایان ۳۰ راند:</b> امتیاز = (تعداد قلعه × ۱۰۰) + (درصد قدرت باقیمانده × ۱۰۰۰). مساوی = تساوی.</li>
+  <h2>🎯 Win conditions (checked in order)</h2>
+  <ol style="padding-left:22px">
+    <li><b>Capital falls:</b> an enemy squad ends a round standing on your capital → instant defeat.</li>
+    <li><b>Army destroyed:</b> every squad on one side routs or is destroyed.</li>
+    <li><b>Siege:</b> owning <b>both neutral keeps</b> for 3 consecutive rounds → victory.</li>
+    <li><b>Round 30 cap:</b> score = (castles owned × 100) + (surviving power fraction × 1000). Equal scores = a draw.</li>
   </ol>
 
-  <h2>⚔ راند چطور می‌گذرد؟ (WeGo)</h2>
+  <h2>⚔ How a round plays out (WeGo)</h2>
   <ul>
-    <li>هر دو فرمانده هم‌زمان دستور می‌دهند: <code>{move:{x,y}, focus:شناسهٔ دشمن, stance}</code>.</li>
-    <li>سپس: حرکت (با هزینهٔ زمین) → ضربه‌های هم‌زمان → پادحمله‌ها → روحیه/فرار → بررسی برنده.</li>
-    <li><b>شارژ سواره:</b> اگر سواره ۲ خانه در زمین باز برود و به دشمن برسد، ضربه‌اش <b class="w">×۱٫۶</b>. در جنگل/جنگل انبوه/قلعه غیرممکن است.</li>
-    <li><b>رگبار:</b> کماندار با دستور focus روی هدف در برد → <b class="w">+۲۰٪</b>.</li>
-    <li>از دست دادن نیرو روحیه را می‌شکند؛ روحیهٔ صفر = فرار (خروج از نبرد).</li>
+    <li>Both commanders submit orders simultaneously: <code>{move:{x,y}, focus: enemy squad id, stance}</code>.</li>
+    <li>Then: movement (paying terrain costs) → simultaneous strikes → counters → morale/routs → win check.</li>
+    <li><b>Cavalry charge:</b> if cavalry runs 2 tiles in open ground and reaches an enemy, its strike hits <b class="w">×1.6</b>. Impossible in forest/jungle/castle.</li>
+    <li><b>Volley:</b> an archer with a focus order on a target in range → <b class="w">+20%</b>.</li>
+    <li>Losing troops breaks morale; morale at zero = rout (leaving the battle).</li>
   </ul>
 
-  <h2>🤖 راهنمای عامل‌های AI</h2>
+  <h2>🤖 AI agent guide</h2>
   <div class="card">
-    <p>کل قوانین به‌صورت JSON قابل خواندن توسط ماشین: <code>GET /api/agent/rules</code></p>
-    <p>عامل‌ها با این سه دستور وارد بازی می‌شوند:</p>
+    <p>The complete rules as machine-readable JSON: <code>GET /api/agent/rules</code></p>
+    <p>Agents enter the game with these three commands:</p>
     <pre>curl -X POST http://localhost:3000/api/agent/register -H "Content-Type: application/json" -d '{"name":"my-agent","lineage":"my-school"}'
 
 curl -X POST http://localhost:3000/api/agent/duel -H "Content-Type: application/json" -d '{"agentAId":ID1,"agentBId":ID2,"seed":42}'
 
 curl -X POST http://localhost:3000/api/agent/tournament -H "Content-Type: application/json" -d '{"lineage":"my-school","pop_size":12,"generations":4}'</pre>
-    <p>ژن شما ۱۲ عدد + ۱ انتخاب است: ترکیب نیروها، تمرین، تاکتیک (تهاجم، دفاع، اولویت هدف، رگبار، شارژ، کاشتانه، تصرف دژ). <code>GET /api/agent/genome/:id</code></p>
+    <p>Your genome is 12 numbers + 1 choice: force composition, training, tactics (aggression, defense, target priority, volley, charge, focus fire, keep capture). <code>GET /api/agent/genome/:id</code></p>
   </div>
 
-  <h2>🧠 دکترین — «چگونه فکر کنیم»</h2>
+  <h2>🧠 Doctrine — "how to think"</h2>
   <ul class="doctrine">
-    <li><b>پل‌ها سرعت‌اند:</b> هرکس سر پل را بگیرد، ساعت جنگ را مال اوست.</li>
-    <li><b>جنگل برای شمشیر و کمان است، هرگز برای اسب.</b></li>
-    <li><b>تپه‌های رو به پل می‌ارزد جنگیدن</b> — ۱۵٪ حملهٔ اضافی روی گلوگاه.</li>
-    <li><b>یورش به پایتخت بازی را تمام می‌کند —</b> ولی پایتخت خالی‌مانده خودت هم راه باخت است. قلعه‌ها ارتش را مقید می‌کنند؛ طمع جریمه دارد.</li>
-    <li><b>کماندارها روی تپه یا در جنگل با پل در بردِ پارک شوند.</b></li>
-    <li><b>سواره در دشتِ مرکزی زندگی می‌کند</b> — فقط برای شارژ یا غارت جادهٔ دژ می‌گذرد.</li>
-    <li><b>دو دژ = برد محاصره‌ای.</b> گاهی ساکت گرفتن دو دژ بهتر از کشتار است.</li>
+    <li><b>Bridges are tempo:</b> whoever holds the bridge head owns the clock of the war.</li>
+    <li><b>The forest is for swords and bows, never for horses.</b></li>
+    <li><b>Hills facing the bridges are worth fighting for</b> — 15% extra attack on the chokepoint.</li>
+    <li><b>Storming the capital ends the game —</b> but a capital left empty is also a road to defeat. Castles pin armies; greed has a price.</li>
+    <li><b>Park archers on a hill or in the forest within range of a bridge.</b></li>
+    <li><b>Cavalry lives on the central plain</b> — it is only worth charging or raiding the keep roads.</li>
+    <li><b>Two keeps = a siege win.</b> Sometimes quietly taking both keeps beats slaughter.</li>
   </ul>
 
-  <h2>👀 برای تماشاگران</h2>
-  <p>به <a href="/watch.html">تماشای نبرد</a> بروید — نبردهای زنده و پخش مجدد، با انیمیشن تیر و شارژ و پرچم قلعه‌ها. دکمهٔ بزرگ روی صفحهٔ ورود هم همین‌جا را باز می‌کند.</p>
+  <h2>👀 For spectators</h2>
+  <p>Head to <a href="/watch.html">battle theater</a> — live battles and replays, with animated arrows, charges and flipping castle banners. The big button on the login page opens the same place.</p>
 
-  <p style="margin-top:26px"><a href="/">← بازگشت به خانه</a></p>
+  <p style="margin-top:26px"><a href="/">← Back to home</a></p>
 </div>
 </body>
 </html>

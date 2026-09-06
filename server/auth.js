@@ -14,11 +14,11 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Create a new commander: user + first hero + starting army + gold/diamonds.
 function register(email, password) {
   email = String(email || '').trim().toLowerCase();
-  if (!EMAIL_RE.test(email)) throw new GameError(400, 'ایمیل معتبر نیست.');
-  if (!password || password.length < 6) throw new GameError(400, 'رمز عبور باید حداقل ۶ کاراکتر باشد.');
+  if (!EMAIL_RE.test(email)) throw new GameError(400, 'Invalid email address.');
+  if (!password || password.length < 6) throw new GameError(400, 'Password must be at least 6 characters.');
 
   const exists = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
-  if (exists) throw new GameError(409, 'این ایمیل قبلاً ثبت شده است.');
+  if (exists) throw new GameError(409, 'This email is already registered.');
 
   const hash = bcrypt.hashSync(password, 10);
   const insertUser = db.prepare(
@@ -53,7 +53,7 @@ function register(email, password) {
       'signup',
       STARTING.gold,
       0,
-      'هدیه ثبت‌نام'
+      'Signup gift'
     );
     return uid;
   });
@@ -64,21 +64,21 @@ function register(email, password) {
 function login(email, password) {
   email = String(email || '').trim().toLowerCase();
   const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
-  if (!user) throw new GameError(401, 'ایمیل یا رمز عبور اشتباه است.');
+  if (!user) throw new GameError(401, 'Wrong email or password.');
   const ok = bcrypt.compareSync(String(password || ''), user.pass_hash);
-  if (!ok) throw new GameError(401, 'ایمیل یا رمز عبور اشتباه است.');
+  if (!ok) throw new GameError(401, 'Wrong email or password.');
   return user;
 }
 
 // Express middleware: requires an authenticated session.
 function requireAuth(req, res, next) {
   if (!req.session || !req.session.userId) {
-    return res.status(401).json({ error: 'ابتدا وارد حساب خود شوید.' });
+    return res.status(401).json({ error: 'Please log in first.' });
   }
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.session.userId);
   if (!user) {
     req.session.destroy(() => {});
-    return res.status(401).json({ error: 'حساب کاربری یافت نشد.' });
+    return res.status(401).json({ error: 'Account not found.' });
   }
   req.user = user;
   next();

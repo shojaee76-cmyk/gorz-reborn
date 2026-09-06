@@ -234,14 +234,14 @@ router.get('/watch/list', wrap((req, res) => {
 
 router.get('/watch/:id', wrap((req, res) => {
   const row = db.prepare('SELECT * FROM battles WHERE id = ?').get(Number(req.params.id));
-  if (!row) throw new GameError(404, 'نبرد یافت نشد.');
+  if (!row) throw new GameError(404, 'Battle not found.');
   const username = (id) => {
     const u = db.prepare('SELECT email FROM users WHERE id = ?').get(id);
     return u ? String(u.email).split('@')[0] : `#${id}`;
   };
   if (row.state === 'running') {
     const live = battles.loadLiveForViewer(row.id);
-    if (!live) throw new GameError(500, 'وضعیت نبرد خراب است.');
+    if (!live) throw new GameError(500, 'Battle state is corrupt.');
     return res.json({
       ok: true,
       battle: { id: row.id, state: 'running', round: live.state.round, attacker: username(row.attacker_id), defender: username(row.defender_id) },
@@ -269,13 +269,13 @@ const agentRouter = require('./agent/routes');
 router.use('/agent', agentRouter);
 
 // 404 + error handling
-router.use((req, res) => res.status(404).json({ error: 'مسیر یافت نشد.' }));
+router.use((req, res) => res.status(404).json({ error: 'Route not found.' }));
 router.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
   if (err instanceof GameError) {
     return res.status(err.status).json({ error: err.faMessage });
   }
   console.error('[routes]', err);
-  res.status(500).json({ error: 'خطای داخلی سرور.' });
+  res.status(500).json({ error: 'Internal server error.' });
 });
 
 module.exports = router;

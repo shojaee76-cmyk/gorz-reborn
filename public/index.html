@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="fa" dir="rtl">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>گرز نو — بازی استراتژی آنلاین</title>
-  <meta name="description" content="گرز نو — بازی استراتژی نوبتی فارسی؛ سربازخانه، قهرمان‌ها، نبردهای زنده، بازارچه، بانک، ماموریت‌ها و رتبه‌بندی جهانی." />
+  <title>Gorz Reborn — Online Strategy Game</title>
+  <meta name="description" content="Gorz Reborn — turn-based strategy game: barracks, heroes, live battles, market, bank, missions and a global ranking." />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='0.9em' font-size='90'%3E%E2%9A%94%EF%B8%8F%3C/text%3E%3C/svg%3E" />
   <link rel="stylesheet" href="css/app.css" />
 </head>
@@ -13,57 +13,57 @@
     <div class="landing-inner">
       <!-- hero -->
       <section class="landing-hero">
-        <h1>گرز <span class="ember">نو</span></h1>
-        <p class="tagline">فرمانده باش؛ لشگر بساز، بجنگ و به صدر رتبه‌بندی جهانی برس.</p>
+        <h1>Gorz <span class="ember">Reborn</span></h1>
+        <p class="tagline">Take command: build your army, wage war, and climb to the top of the global ranking.</p>
         <ul class="features">
-          <li><span class="ic">⚔️</span> نبردهای نوبتی زنده با فرماندهان دیگر</li>
-          <li><span class="ic">🛡️</span> آموزش سربازان در سربازخانه و تربیت قهرمان</li>
-          <li><span class="ic">💰</span> بازارچهٔ دادوستد با کارمزد منصفانه</li>
-          <li><span class="ic">🏆</span> ماموریت‌ها، رتبه‌بندی جهانی و قرعه‌کشی ماهانه</li>
+          <li><span class="ic">⚔️</span> Live turn-based battles against other commanders</li>
+          <li><span class="ic">🛡️</span> Train soldiers in the barracks and raise heroes</li>
+          <li><span class="ic">💰</span> Player market with a fair fee</li>
+          <li><span class="ic">🏆</span> Missions, global ranking and a monthly raffle</li>
         </ul>
-        <p class="hint"><span>🪙</span> ثبت‌نام رایگان — با ۱۰۰ سرباز، ۱۰۰۰ سکهٔ طلا و ۱۰۰ الماس شروع کن.</p>
+        <p class="hint"><span>🪙</span> Free to join — start with 100 soldiers, 1,000 gold and 100 diamonds.</p>
       </section>
 
       <!-- auth -->
       <section class="auth-card">
-        <h2 id="auth-title">ورود به گرز نو</h2>
-        <p class="auth-sub" id="auth-sub">با حساب خود وارد شوید.</p>
+        <h2 id="auth-title">Sign in to Gorz Reborn</h2>
+        <p class="auth-sub" id="auth-sub">Log in with your account.</p>
 
         <div class="tabs" role="tablist">
-          <button id="tab-login" class="active" type="button">ورود</button>
-          <button id="tab-register" type="button">ثبت‌نام</button>
+          <button id="tab-login" class="active" type="button">Log in</button>
+          <button id="tab-register" type="button">Register</button>
         </div>
 
         <div id="form-error" class="form-error" role="alert"></div>
 
         <form id="auth-form" novalidate>
           <div class="form-group">
-            <label for="email">ایمیل</label>
-            <input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" dir="ltr" />
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" />
           </div>
           <div class="form-group">
-            <label for="password">رمز عبور</label>
-            <input type="password" id="password" name="password" placeholder="••••••••" autocomplete="current-password" dir="ltr" />
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" placeholder="••••••••" autocomplete="current-password" />
           </div>
           <div class="form-group hidden" id="confirm-group">
-            <label for="confirm">تکرار رمز عبور</label>
-            <input type="password" id="confirm" name="confirm" placeholder="••••••••" autocomplete="new-password" dir="ltr" />
+            <label for="confirm">Confirm password</label>
+            <input type="password" id="confirm" name="confirm" placeholder="••••••••" autocomplete="new-password" />
           </div>
-          <button type="submit" id="auth-submit" class="btn btn-primary btn-block">ورود</button>
+          <button type="submit" id="auth-submit" class="btn btn-primary btn-block">Log in</button>
         </form>
 
         <p class="auth-alt">
-          <span id="auth-alt-text">حساب ندارید؟</span>
-          <button type="button" id="auth-alt-btn">ثبت‌نام کنید</button>
+          <span id="auth-alt-text">No account yet?</span>
+          <button type="button" id="auth-alt-btn">Register</button>
         </p>
 
         <!-- v3: viewer theater — big dramatic button -->
-        <a class="watch-btn" href="/watch.html">👀 تماشای نبرد<span class="watch-sub">نبردهای زنده و پخش نبردهای گذشته — بدون حساب</span></a>
+        <a class="watch-btn" href="/watch.html">👀 Watch battles<span class="watch-sub">Live battles and replays — no account needed</span></a>
       </section>
     </div>
 
     <!-- v3: agent quickstart — agents onboard themselves here -->
-    <section class="agent-quickstart" dir="ltr">
+    <section class="agent-quickstart">
       <h3>🤖 Agent Quickstart</h3>
       <p>AI agents can learn and play Gorz Reborn with zero human help. The complete machine-readable rulebook: <code>GET /api/agent/rules</code></p>
       <pre># 1) register your agent

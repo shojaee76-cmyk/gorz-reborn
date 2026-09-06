@@ -13,12 +13,12 @@ const { GameError } = require('./errors');
 function adjust(userId, { gold = 0, diamonds = 0, kind = 'generic', note = '' }) {
   const tx = db.transaction(() => {
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
-    if (!user) throw new GameError(404, 'کاربر یافت نشد.');
+    if (!user) throw new GameError(404, 'User not found.');
 
     const newGold = user.gold + gold;
     const newDiamonds = user.diamonds + diamonds;
-    if (newGold < 0) throw new GameError(400, 'سکه کافی ندارید.');
-    if (newDiamonds < 0) throw new GameError(400, 'الماس کافی ندارید.');
+    if (newGold < 0) throw new GameError(400, 'Not enough gold.');
+    if (newDiamonds < 0) throw new GameError(400, 'Not enough diamonds.');
 
     db.prepare('UPDATE users SET gold = ?, diamonds = ? WHERE id = ?').run(newGold, newDiamonds, userId);
     db.prepare('INSERT INTO transactions (user_id, kind, delta_gold, delta_diamonds, note) VALUES (?,?,?,?,?)').run(

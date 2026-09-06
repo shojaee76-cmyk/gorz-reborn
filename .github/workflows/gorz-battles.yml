@@ -1,0 +1,171 @@
+# ============================================================
+# Gorz Reborn - hosted agent battles
+# Runs the self-contained tournament runner (server/agent/hosted.js)
+# on GitHub's free cloud runners - no local PC, no live server needed.
+# The runner drives the whole stack in-process (SQLite + evolution +
+# tactics engine) against a throwaway database, then uploads a JSON
+# battle report as a workflow artifact.
+#
+# Triggers:
+#   - manual (workflow_dispatch, with gens/pop/seed/lineage inputs)
+#   - nightly schedule (UTC 03:17)
+#   - pushes that touch the agent stack or this workflow
+#
+# Exit codes from hosted.js:
+#   0 = healthy tournament      (job passes)
+#   1 = fatal / no matches      (job fails)
+#   2 = zero decisive games     (job fails - engine regression signal)
+# ============================================================
+name: gorz-battles
+
+on:
+  workflow_dispatch:
+    inputs:
+      gens:
+        description: 'Generations to evolve (1-50)'
+        required: false
+        default: '5'
+      pop:
+        description: 'Population size (4-40)'
+        required: false
+        default: '16'
+      seed:
+        description: 'Base seed (same seed = reproducible run)'
+        required: false
+        default: '42'
+      lineage:
+        description: 'Lineage label'
+        required: false
+        default: 'ci-sparta'
+  schedule:
+    - cron: '17 3 * * *'  # nightly, off-peak minute
+  push:
+    paths:
+      - 'server/agent/**'
+      - 'server/game/**'
+      - 'server/db.js'
+      - '.github/workflows/gorz-battles.yml'
+
+permissions:
+  contents: write # the run commits arena/report.json for the static arena page
+
+concurrency:
+  group: gorz-battles-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tournament:
+    name: Hosted tournament (gens ${{ inputs.gens || '5' }}, pop ${{ inputs.pop || '16' }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run hosted tournament
+        id: tournament
+        run: |
+          node server/agent/hosted.js \
+            --gens "${{ inputs.gens || '5' }}" \
+            --pop "${{ inputs.pop || '16' }}" \
+            --base-seed "${{ inputs.seed || '42' }}" \
+            --lineage "${{ inputs.lineage || 'ci-sparta' }}" \
+            --json \
+            --out gorz-battle-report.json
+
+      - name: Commit battle report
+        if: success()
+        run: |
+          git config user.name "gorz-battle-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir -p public/arena
+          cp gorz-battle-report.json public/arena/report.json
+          git add public/arena/report.json
+          if git diff --cached --quiet; then
+            echo "Report unchanged - nothing to commit."
+          else
+            git commit -m "arena: battle report $(date -u +%Y-%m-%dT%H:%MZ)"
+            pushed=0
+            for i in 1 2 3; do
+              if git push; then pushed=1; break; fi
+              echo "push attempt $i failed - rebasing on latest master"
+              git pull --rebase origin ${GITHUB_REF_NAME} || true
+              sleep 5
+            done
+            [ "$pushed" = "1" ] || { echo "could not push report"; exit 1; }
+          fi
+
+      - name: Job summary
+        if: always() && steps.tournament.outcome != 'skipped'
+        run: |
+          # heredoc delimiter is quoted, so bash does NOT expand the
+          # backticks/JS below - the script runs verbatim under node.
+          node <<'EOF'
+          const fs = require('fs');
+          let r;
+          try { r = JSON.parse(fs.readFileSync('gorz-battle-report.json', 'utf8')); }
+          catch (e) {
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, 'gorz-battles: no report produced (run failed).\n');
+            process.exit(0);
+          }
+          const L = [];
+          L.push('# Gorz Battles - hosted tournament report');
+          L.push('');
+          L.push('| Param | Value |');
+          L.push('| --- | --- |');
+          L.push('| Lineage | ' + r.lineage + ' |');
+          L.push('| Generations | ' + r.params.gens + ' |');
+          L.push('| Population | ' + r.params.pop + ' |');
+          L.push('| Base seed | ' + r.params.baseSeed + ' |');
+          L.push('| Duration | ' + (r.durationMs / 1000).toFixed(1) + 's |');
+          const tm = r.generations.reduce((s, g) => s + g.matches, 0);
+          const td = r.generations.reduce((s, g) => s + g.decisive, 0);
+          const te = r.generations.reduce((s, g) => s + g.errors, 0);
+          L.push('| Matches | ' + tm + ' (' + (tm ? (100 * td / tm).toFixed(1) : '0.0') + '% decisive, ' + te + ' errors) |');
+          L.push('');
+          L.push('## Champion');
+          const c = r.champion;
+          if (c) {
+            L.push('**' + (c.name || '#' + c.id) + '** - fitness ' + c.fitness + ', gen ' + c.generation + ', w/l/d ' + c.wins + '/' + c.losses + '/' + c.draws + ', fingerprint `' + c.fingerprint + '`');
+            L.push('');
+            L.push('```json');
+            L.push(JSON.stringify(c.genome, null, 2));
+            L.push('```');
+          } else {
+            L.push('(none)');
+          }
+          L.push('');
+          L.push('## Final leaderboard');
+          L.push('');
+          L.push('| # | Name | ID | Gen | Fitness | W/L/D | Fingerprint |');
+          L.push('| --- | --- | --- | --- | --- | --- | --- |');
+          r.leaderboard.forEach((e, i) => {
+            L.push('| ' + (i + 1) + ' | ' + (e.name || '-') + ' | ' + e.id + ' | ' + e.generation + ' | ' + e.fitness + ' | ' + e.wins + '/' + e.losses + '/' + e.draws + ' | `' + e.fingerprint.slice(0, 24) + '` |');
+          });
+          L.push('');
+          L.push('## Per-generation');
+          L.push('');
+          L.push('| Gen | Matches | Decisive | Rate | Errors |');
+          L.push('| --- | --- | --- | --- | --- |');
+          r.generations.forEach((g) => {
+            L.push('| ' + g.generation + ' | ' + g.matches + ' | ' + g.decisive + ' | ' + (100 * g.decisiveRate).toFixed(1) + '% | ' + g.errors + ' |');
+          });
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, L.join('\n') + '\n');
+          EOF
+
+      - name: Upload battle report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gorz-battle-report
+          path: gorz-battle-report.json
+          if-no-files-found: ignore

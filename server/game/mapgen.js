@@ -21,10 +21,10 @@ const V3 = {
   RIVER_X: 10,
   BRIDGES: [3, 7, 11],           // y positions of the 3 bridges
   CASTLES: {
-    westHome:  { x: 1,  y: 7,  startOwner: 'A', kind: 'capital', name: 'قلعه باختر' },
-    eastHome:  { x: 19, y: 7,  startOwner: 'B', kind: 'capital', name: 'قلعه خاور' },
-    northKeep: { x: 6,  y: 3,  startOwner: null, kind: 'keep',  name: 'دژ شمال' },
-    southKeep: { x: 14, y: 11, startOwner: null, kind: 'keep',  name: 'دژ جنوب' },
+    westHome:  { x: 1,  y: 7,  startOwner: 'A', kind: 'capital', name: 'West Castle' },
+    eastHome:  { x: 19, y: 7,  startOwner: 'B', kind: 'capital', name: 'East Castle' },
+    northKeep: { x: 6,  y: 3,  startOwner: null, kind: 'keep',  name: 'North Keep' },
+    southKeep: { x: 14, y: 11, startOwner: null, kind: 'keep',  name: 'South Keep' },
   },
 };
 
@@ -142,14 +142,14 @@ function generateV3Map(seedExtra) {
 // client + rulebook + /api/agent/rules render from the same numbers.
 // ------------------------------------------------------------
 const TERRAIN_RULES = {
-  plain:    { cost: 1, defBonus: 0,    atkBonus: 0,    charge: true,  passable: true,  fa: 'دشت',  en: 'Plain' },
-  hill:     { cost: 1, defBonus: 0,    atkBonus: 0.15, charge: true,  passable: true,  fa: 'تپه',  en: 'Hill' },
-  forest:   { cost: 1, defBonus: 0.35, atkBonus: 0,    charge: false, passable: true,  fa: 'جنگل', en: 'Forest' },
-  jungle:   { cost: 2, defBonus: 0.5,  atkBonus: 0,    charge: false, passable: true,  fa: 'جنگل انبوه', en: 'Jungle' },
-  water:    { cost: Infinity, defBonus: 0, atkBonus: 0, charge: false, passable: false, fa: 'آب', en: 'Water' },
-  bridge:   { cost: 1, defBonus: 0,    atkBonus: 0,    charge: true,  passable: true,  fa: 'پل',  en: 'Bridge' },
-  mountain: { cost: Infinity, defBonus: 0, atkBonus: 0, charge: false, passable: false, fa: 'کوه', en: 'Mountain' },
-  castle:   { cost: 1, defBonus: 0.4,  atkBonus: 0,    charge: false, passable: true,  fa: 'قلعه', en: 'Castle' },
+  plain:    { cost: 1, defBonus: 0,    atkBonus: 0,    charge: true,  passable: true,  en: 'Plain' },
+  hill:     { cost: 1, defBonus: 0,    atkBonus: 0.15, charge: true,  passable: true,  en: 'Hill' },
+  forest:   { cost: 1, defBonus: 0.35, atkBonus: 0,    charge: false, passable: true,  en: 'Forest' },
+  jungle:   { cost: 2, defBonus: 0.5,  atkBonus: 0,    charge: false, passable: true,  en: 'Jungle' },
+  water:    { cost: Infinity, defBonus: 0, atkBonus: 0, charge: false, passable: false, en: 'Water' },
+  bridge:   { cost: 1, defBonus: 0,    atkBonus: 0,    charge: true,  passable: true,  en: 'Bridge' },
+  mountain: { cost: Infinity, defBonus: 0, atkBonus: 0, charge: false, passable: false, en: 'Mountain' },
+  castle:   { cost: 1, defBonus: 0.4,  atkBonus: 0,    charge: false, passable: true,  en: 'Castle' },
 };
 
 module.exports = { generateV3Map, TERRAIN_RULES, V3 };

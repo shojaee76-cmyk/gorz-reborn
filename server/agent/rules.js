@@ -12,7 +12,7 @@ const { TERRAIN_RULES, V3 } = require('../game/mapgen');
 function rulesObject(baseUrl) {
   const base = baseUrl || 'http://localhost:3000';
   return {
-    game: 'Gorz Reborn (گرز نو) v3 — The Four Castles',
+    game: 'Gorz Reborn v3 — The Four Castles',
     tagline: 'Two armies (1 commander + 3 lieutenants each) fight on a symmetric river map with 4 castles. Take the enemy capital, siege both neutral keeps for 3 rounds, or destroy the enemy army.',
     grid: { w: TACTICS.gridW, h: TACTICS.gridH, symmetric: '180-degree point symmetry — perfectly fair' },
 

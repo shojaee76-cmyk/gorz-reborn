@@ -563,7 +563,7 @@ function evaluateOutcome(state) {
       return {
         over: true,
         winner: occ.side,
-        reason: key === 'westHome' ? 'قلعه باختر سقوط کرد' : 'قلعه خاور سقوط کرد',
+        reason: key === 'westHome' ? 'West Castle fell' : 'East Castle fell',
         detail: `${c.name} captured by ${occ.side}`,
       };
     }
@@ -582,7 +582,7 @@ function evaluateOutcome(state) {
     if (holdsBoth(side)) {
       state.siegeCounter[side] += 1;
       if (state.siegeCounter[side] >= TACTICS.siegeRoundsToWin) {
-        return { over: true, winner: side, reason: 'تسلط بر دژها', detail: 'held both keeps for ' + TACTICS.siegeRoundsToWin + ' rounds' };
+        return { over: true, winner: side, reason: 'kept both keeps', detail: 'held both keeps for ' + TACTICS.siegeRoundsToWin + ' rounds' };
       }
     } else {
       state.siegeCounter[side] = 0;
@@ -779,8 +779,8 @@ function createBattleState(battleId, attackerSide, defenderSide, seedExtra) {
   defenderSide.side = 'defender';
   for (const s of attackerSide.squads) s.side = 'attacker';
   for (const s of defenderSide.squads) s.side = 'defender';
-  deploy(w, h, attackerSide, 'attacker', 'ح');
-  deploy(w, h, defenderSide, 'defender', 'د');
+  deploy(w, h, attackerSide, 'attacker', 'A');
+  deploy(w, h, defenderSide, 'defender', 'B');
   // v3 command structure: biggest squad = commander (full hero bonus),
   // the other three = lieutenants (aide multiplier 0.85, no hero aura).
   // Titles are exposed on the squad objects so agents and viewers can
@@ -790,10 +790,10 @@ function createBattleState(battleId, attackerSide, defenderSide, seedExtra) {
     bySize.forEach((s, i) => {
       if (i === 0) {
         s.commander = true;
-        s.title = 'سردار';
+        s.title = 'Commander';
       } else {
         s.commander = false;
-        s.title = `سپهبد ${i}`;
+        s.title = `Lieutenant ${i}`;
         s.heroMult = (s.heroMult || 1) * 0.85;
       }
     });

@@ -1,6 +1,6 @@
 'use strict';
 // ============================================================
-// Gorz Reborn — agent/evolution.js
+// Gorz Reborn - agent/evolution.js
 // Higher-order trainer: take the current population, run a
 // round-robin tournament using the real tactics engine (state
 // frozen per seed), score by Elo, then spawn the next generation.
@@ -8,7 +8,7 @@
 // Each generation cycle is:
 //   1. Apply each agent's genome to its dedicated user row
 //      (so every fight is apples-to-apples: same level, same
-//      resources, same hero baseline — only the genome varies).
+//      resources, same hero baseline - only the genome varies).
 //   2. For each pair, build sides via tactics.buildSide from the
 //      user's barracks, createBattleState, and step rounds with
 //      brain.planOrders for both sides until evaluateOutcome
@@ -169,7 +169,7 @@ function nextGeneration(lineage, opts = {}) {
   const newGen = maxGen + 1;
   const spawned = [];
 
-  // carry elites as-is (with mild fitness erosion) — these are "proven"
+  // carry elites as-is (with mild fitness erosion) - these are "proven"
   for (const e of elites) {
     const uid = newUserIds.shift();
     if (uid === undefined) break;
@@ -177,6 +177,7 @@ function nextGeneration(lineage, opts = {}) {
     const child = registry.create({
       userId: uid,
       lineage,
+      name: e.name || `${lineage}-elite-g${newGen}`,
       generation: newGen,
       parentAId: e.id,
       parentBId: null,
@@ -197,9 +198,14 @@ function nextGeneration(lineage, opts = {}) {
       childGenome = genomeLib.cloneGene(a.genome);
     }
     childGenome = genomeLib.mutateGene(childGenome, rng, mutationRate);
+    // Child name shows ancestry so the master can track bloodlines:
+    // "genghis-wolf.shield-of-leonidas" = crossover of those two agents.
+    const nameA = a.name || `a${a.id}`;
+    const nameB = b.name || `b${b.id}`;
     const child = registry.create({
       userId: uid,
       lineage,
+      name: `${nameA}.${nameB}`.slice(0, 60),
       generation: newGen,
       parentAId: a.id,
       parentBId: b.id,

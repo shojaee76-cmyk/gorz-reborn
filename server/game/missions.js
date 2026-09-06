@@ -16,9 +16,9 @@ function allMissions() {
 // Accept a mission (or lazily attach all missions to the user).
 function accept(userId, missionId) {
   const m = db.prepare('SELECT * FROM missions WHERE id = ?').get(missionId);
-  if (!m) throw new GameError(404, 'ماموریت یافت نشد.');
+  if (!m) throw new GameError(404, 'Mission not found.');
   const active = db.prepare('SELECT COUNT(*) AS n FROM user_missions WHERE user_id = ? AND done = 0').get(userId).n;
-  if (active >= MISSIONS.dailyLimit) throw new GameError(400, 'به حداکثر ماموریت‌های فعال رسیده‌اید.');
+  if (active >= MISSIONS.dailyLimit) throw new GameError(400, 'You have reached the maximum number of active missions.');
   db.prepare('INSERT OR IGNORE INTO user_missions (user_id, mission_id, progress, done) VALUES (?,?,?,?)').run(
     userId,
     missionId,
@@ -36,7 +36,7 @@ function syncUserMissions(userId) {
 
 function userMissions(userId) {
   const rows = db.prepare(
-    `SELECT um.*, m.id AS mission_id, m.title_fa, m.desc_fa, m.type, m.target, m.reward_gold, m.reward_xp, m.reward_diamonds
+    `SELECT um.*, m.id AS mission_id, m.title, m.description, m.type, m.target, m.reward_gold, m.reward_xp, m.reward_diamonds
      FROM user_missions um JOIN missions m ON m.id = um.mission_id
      WHERE um.user_id = ? ORDER BY m.id`
   ).all(userId);
@@ -98,23 +98,23 @@ function claim(userId, missionId) {
   // Refresh progress first so freshly-completed missions can be claimed.
   refresh(userId);
   const um = db.prepare('SELECT * FROM user_missions WHERE user_id = ? AND mission_id = ?').get(userId, missionId);
-  if (!um) throw new GameError(404, 'ماموریت یافت نشد.');
-  if (!um.done) throw new GameError(400, 'این ماموریت هنوز کامل نشده است.');
+  if (!um) throw new GameError(404, 'Mission not found.');
+  if (!um.done) throw new GameError(400, 'This mission is not completed yet.');
 
   const m = db.prepare('SELECT * FROM missions WHERE id = ?').get(missionId);
   const claimed = db.prepare('SELECT COUNT(*) AS n FROM transactions WHERE user_id = ? AND kind = ? AND note = ?').get(
     userId,
     'mission_reward',
-    `ماموریت: ${m.title_fa}`
+    `Mission: ${m.title}`
   ).n;
-  if (claimed > 0) throw new GameError(400, 'جایزه این ماموریت قبلاً دریافت شده است.');
+  if (claimed > 0) throw new GameError(400, 'This mission reward has already been claimed.');
 
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
   adjust(userId, {
     gold: m.reward_gold,
     diamonds: m.reward_diamonds,
     kind: 'mission_reward',
-    note: `ماموریت: ${m.title_fa}`,
+    note: `Mission: ${m.title}`,
   });
 
   // grant commander XP (+ level-up handling)
@@ -134,7 +134,7 @@ function claim(userId, missionId) {
       gold: levelUps * PLAYER.levelUpGold,
       diamonds: levelUps * PLAYER.levelUpDiamonds,
       kind: 'levelup',
-      note: `ارتقای فرمانده به سطح ${level}`,
+      note: `Commander leveled up to ${level}`,
     });
   }
 

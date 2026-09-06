@@ -230,7 +230,7 @@
         svgEl('path', { d: `M${px + s * 0.03} ${py - s * 0.5} l${s * 0.16} ${s * 0.05} l${-s * 0.16} ${s * 0.06} Z`, fill: stone }, g);
         // flag ring to show ownership
         svgEl('circle', { cx: px, cy: py, r: s * 0.42, fill: 'none', stroke: stone, 'stroke-width': 1.5, 'stroke-dasharray': '3 3', opacity: 0.7 }, g);
-        svgEl('text', { x: px, y: py + s * 0.4, 'text-anchor': 'middle', 'font-size': s * 0.18, fill: C.ink, 'font-family': 'Vazirmatn, sans-serif' }, g).textContent = k.name;
+        svgEl('text', { x: px, y: py + s * 0.4, 'text-anchor': 'middle', 'font-size': s * 0.18, fill: C.ink, 'font-family': 'sans-serif' }, g).textContent = k.name;
       });
 
       // -------- home castles --------
@@ -279,7 +279,7 @@
         const t = svgEl('text', { x: s * 0.32, y: -s * 0.16, 'font-size': s * 0.42, 'text-anchor': 'middle', 'dominant-baseline': 'middle' }, g);
         t.textContent = glyph[sq.type] || '⚔️';
         // count
-        const c = svgEl('text', { x: 0, y: s * 0.62, 'font-size': s * 0.34, 'text-anchor': 'middle', fill: isMine ? '#fff' : C.ink, 'font-family': 'Vazirmatn, monospace', 'font-weight': '700' }, g);
+        const c = svgEl('text', { x: 0, y: s * 0.62, 'font-size': s * 0.34, 'text-anchor': 'middle', fill: isMine ? '#fff' : C.ink, 'font-family': 'monospace', 'font-weight': '700' }, g);
         c.textContent = sq.count;
       });
 
@@ -297,7 +297,7 @@
         svgEl('path', { d: `M${cx(opts.pendingMove.x) - cw * 0.1} ${cy(opts.pendingMove.y)} h${cw * 0.2} M${cx(opts.pendingMove.x)} ${cy(opts.pendingMove.y) - cw * 0.1} v${cw * 0.2}`, stroke: C.ember, 'stroke-width': 2.5 }, pm);
       }
 
-      // -------- scale legend (leagues / فرسخ) --------
+      // -------- scale legend (leagues) --------
       // A real cartouche scale bar: 1 cell ≈ 0.5 league, grid width -> total leagues.
       const leagues = +(cols * 0.5).toFixed(1);
       const legend = svgEl('g', { class: 'map-legend', transform: `translate(${W - 214},26)` }, svg);
@@ -309,8 +309,8 @@
         svgEl('rect', { x: tx - 0.6, y: -3, width: 1.2, height: 6, fill: C.ink }, legend);
       }
       svgEl('rect', { x: 0, y: -3, width: barW / 2, height: 6, fill: C.ink, opacity: 0.18 }, legend);
-      svgEl('text', { x: barW / 2, y: -9, 'text-anchor': 'middle', 'font-size': 10, fill: C.ink, 'font-family': 'Vazirmatn, sans-serif', 'font-weight': '700' }, legend).textContent = `مقیاس: ${leagues} فرسخ`;
-      svgEl('text', { x: barW / 2, y: 11, 'text-anchor': 'middle', 'font-size': 9, fill: C.ink, 'font-family': 'Vazirmatn, sans-serif' }, legend).textContent = `${leagues} فرسخ`;
+      svgEl('text', { x: barW / 2, y: -9, 'text-anchor': 'middle', 'font-size': 10, fill: C.ink, 'font-family': 'sans-serif', 'font-weight': '700' }, legend).textContent = `Scale: ${leagues} leagues`;
+      svgEl('text', { x: barW / 2, y: 11, 'text-anchor': 'middle', 'font-size': 9, fill: C.ink, 'font-family': 'sans-serif' }, legend).textContent = `${leagues} leagues`;
 
       // -------- animated march trails (live draft + replay) --------
       const trailLayer = svgEl('g', { class: 'trails' }, svg);
@@ -334,14 +334,14 @@
       svgEl('circle', { cx: 0, cy: 0, r: 28, fill: 'none', stroke: C.ink, 'stroke-width': 0.6, opacity: 0.5 }, compass);
       svgEl('path', { d: 'M0 -30 L7 0 L0 30 L-7 0 Z', fill: C.castleD }, compass);
       svgEl('path', { d: 'M0 -30 L7 0 L0 0 Z', fill: C.castleA }, compass);
-      [['شمال', 0, -42], ['جنوب', 0, 46], ['غرب', -42, 4], ['خاور', 44, 4]].forEach(([l, dx, dy]) => {
-        svgEl('text', { x: dx, y: dy, 'text-anchor': 'middle', 'font-size': 9, fill: C.ink, 'font-family': 'Vazirmatn, sans-serif' }, compass).textContent = l;
+      [['N', 0, -42], ['S', 0, 46], ['W', -42, 4], ['E', 44, 4]].forEach(([l, dx, dy]) => {
+        svgEl('text', { x: dx, y: dy, 'text-anchor': 'middle', 'font-size': 9, fill: C.ink, 'font-family': 'sans-serif' }, compass).textContent = l;
       });
       // title cartouche
       const title = svgEl('g', { class: 'map-title', transform: `translate(20,24)` }, svg);
       svgEl('rect', { x: 0, y: -14, width: 220, height: 30, rx: 6, fill: 'rgba(44,36,24,0.78)' }, title);
-      const tt = svgEl('text', { x: 110, y: 8, 'text-anchor': 'middle', 'font-size': 14, fill: C.gold, 'font-family': 'Vazirmatn, sans-serif', 'font-weight': '700' }, title);
-      tt.textContent = `نقشه نبرد — دور ${view.round || 1}`;
+      const tt = svgEl('text', { x: 110, y: 8, 'text-anchor': 'middle', 'font-size': 14, fill: C.gold, 'font-family': 'sans-serif', 'font-weight': '700' }, title);
+      tt.textContent = `Battle Map — Round ${view.round || 1}`;
       // burnt border
       svgEl('rect', { x: 4, y: 4, width: W - 8, height: H - 8, fill: 'none', stroke: C.ink, 'stroke-width': 6, opacity: 0.55, 'stroke-linejoin': 'round' }, svg);
       svgEl('rect', { x: 9, y: 9, width: W - 18, height: H - 18, fill: 'none', stroke: C.castleADk, 'stroke-width': 1.5, opacity: 0.5 }, svg);
@@ -391,7 +391,7 @@
       if (board && !board.querySelector('.map-zoom-ctrl')) {
         const ctrl = document.createElement('div');
         ctrl.className = 'map-zoom-ctrl';
-        ctrl.innerHTML = '<button data-z="in" title="بزرگ‌نمایی">+</button><button data-z="out" title="کوچک‌نمایی">−</button><button data-z="reset" title="اندازه اصلی">⤢</button>';
+        ctrl.innerHTML = '<button data-z="in" title="Zoom in">+</button><button data-z="out" title="Zoom out">−</button><button data-z="reset" title="Reset view">⤢</button>';
         ctrl.style.position = 'absolute';
         ctrl.style.left = '14px';
         ctrl.style.right = 'auto';

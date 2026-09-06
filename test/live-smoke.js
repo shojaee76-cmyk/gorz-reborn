@@ -28,7 +28,7 @@ async function api(method, p, body, cookie) {
   if (ent.status === 200) {
     const v = ent.data.view;
     console.log('grid:', v.grid.w + 'x' + v.grid.h, '| squads:', v.squads.length, '| timer:', v.orderTimerSec + 's');
-    const mine = v.squads.filter((s) => (ent.data.side === 'attacker' ? s.id.startsWith('ح') : s.id.startsWith('د')));
+    const mine = v.squads.filter((s) => (ent.data.side === 'attacker' ? s.id.startsWith('A') : s.id.startsWith('B')));
     console.log('my squads:', mine.map((s) => s.id + ':' + s.count).join(', '));
     // submit orders for every squad to prove the endpoint round-trips
     const orders = {};

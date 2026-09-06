@@ -31,7 +31,7 @@ for (const field of ['grid', 'terrain', 'maxRounds', 'orderTimerSec', 'powerFrac
 }
 // squad id prefixes the client's ownership check relies on
 const tacticsSrc = fs.readFileSync('server/game/tactics.js', 'utf8');
-assert(tacticsSrc.includes("'ح'") && tacticsSrc.includes("'د'"), 'squad id prefixes missing');
-assert(client.includes("startsWith('ح')") && client.includes("startsWith('د')"), 'client prefix check mismatched');
+assert(tacticsSrc.includes("'A'") && tacticsSrc.includes("'B'"), 'squad id prefixes missing');
+assert(client.includes("startsWith('A')") && client.includes("startsWith('B')"), 'client prefix check mismatched');
 
 console.log('CONTRACT OK: endpoints + view fields + squad prefixes aligned');

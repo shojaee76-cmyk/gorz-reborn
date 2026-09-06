@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="fa" dir="rtl">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>تماشای نبرد — گرز نو</title>
+<title>Battle Theater — Gorz Reborn</title>
 <style>
   :root {
     --bg: #14161a;
@@ -20,7 +20,7 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     background: var(--bg); color: var(--text);
-    font-family: Vazirmatn, 'Segoe UI', Tahoma, sans-serif;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
     min-height: 100vh;
   }
   header {
@@ -116,36 +116,36 @@
 </head>
 <body>
 <header>
-  <h1>⚔ تماشای نبرد</h1>
+  <h1>⚔ Battle Theater</h1>
   <span class="vs" id="matchup"></span>
   <span class="badge" id="stateBadge"></span>
   <span class="spacer"></span>
-  <a href="/">خانه</a>
-  <a href="/rulebook.html">قوانین</a>
+  <a href="/">Home</a>
+  <a href="/rulebook.html">Rules</a>
 </header>
 
 <main>
   <section class="stage-wrap">
     <div class="picker" id="picker"></div>
     <div class="stage" id="stage">
-      <div class="empty" id="emptyMsg">نبردی برای تماشا نیست. اول یک نبرد راه بیندازید یا از لیست زیر یکی را انتخاب کنید.</div>
+      <div class="empty" id="emptyMsg">No battles to watch yet. Start a battle first, or pick one from the list below.</div>
     </div>
     <div class="theater-controls" id="controls" hidden>
-      <button class="primary" id="btnPlay">▶ پخش</button>
-      <button id="btnPrev">⏮ راند قبل</button>
-      <button id="btnNext">راند بعد ⏭</button>
-      <span class="round-indicator">راند <b id="roundNow">0</b> / <span id="roundMax">0</span></span>
+      <button class="primary" id="btnPlay">▶ Play</button>
+      <button id="btnPrev">⏮ Prev round</button>
+      <button id="btnNext">Next round ⏭</button>
+      <span class="round-indicator">Round <b id="roundNow">0</b> / <span id="roundMax">0</span></span>
     </div>
     <div class="hud" id="hud" hidden>
-      <div class="pow att"><div class="label"><span>حمله (باختر)</span><span id="powA">100%</span></div><div class="bar"><i id="barA" style="width:100%"></i></div></div>
-      <div class="pow def"><div class="label"><span>دفاع (خاور)</span><span id="powD">100%</span></div><div class="bar"><i id="barD" style="width:100%"></i></div></div>
+      <div class="pow att"><div class="label"><span>Attacker (West)</span><span id="powA">100%</span></div><div class="bar"><i id="barA" style="width:100%"></i></div></div>
+      <div class="pow def"><div class="label"><span>Defender (East)</span><span id="powD">100%</span></div><div class="bar"><i id="barD" style="width:100%"></i></div></div>
     </div>
     <div class="castles-row" id="castlesRow"></div>
     <div id="legendHost"></div>
   </section>
 
   <aside class="ticker" id="tickerWrap" hidden>
-    <h3>📜 رویدادهای نبرد</h3>
+    <h3>📜 Battle events</h3>
     <div id="ticker"></div>
   </aside>
 </main>
@@ -162,19 +162,19 @@
   let cursorRound = 0;
 
   // ---------- helpers ----------
-  const SIDE_FA = { attacker: 'حمله', defender: 'دفاع' };
-  const UNIT_FA = { swordsman: 'شمشیرزن', archer: 'کماندار', cavalry: 'سواره' };
+  const SIDE_FA = { attacker: 'Attacker', defender: 'Defender' };
+  const UNIT_FA = { swordsman: 'Swordsman', archer: 'Archer', cavalry: 'Cavalry' };
 
   function fmtEvt(e, round) {
-    const r = `<span class="r">ر${round}</span>`;
-    const sq = (id) => id || '؟';
+    const r = `<span class="r">R${round}</span>`;
+    const sq = (id) => id || '?';
     switch (e.kind) {
-      case 'move': return `${r}🚩 ${sq(e.squad)} به (${e.to.x},${e.to.y}) ${e.auto ? '(تعقیب)' : ''}`;
-      case 'strike': return `${r}⚔ ${sq(e.attacker)} → ${sq(e.target)}: ${e.kills} کشته${e.charge ? ' ⚡شارژ!' : ''}${e.volley ? ' 🎯رگبار' : ''}`;
-      case 'counter': return `${r}↩ پادحمله ${sq(e.attacker)} → ${sq(e.target)}: ${e.kills}`;
-      case 'rout': return `${r}🏳 فرار ${sq(e.squad)}!`;
+      case 'move': return `${r}🚩 ${sq(e.squad)} to (${e.to.x},${e.to.y}) ${e.auto ? '(pursuit)' : ''}`;
+      case 'strike': return `${r}⚔ ${sq(e.attacker)} → ${sq(e.target)}: ${e.kills} kills${e.charge ? ' ⚡Charge!' : ''}${e.volley ? ' 🎯Volley' : ''}`;
+      case 'counter': return `${r}↩ Counter ${sq(e.attacker)} → ${sq(e.target)}: ${e.kills}`;
+      case 'rout': return `${r}🏳 Rout ${sq(e.squad)}!`;
       case 'castle': return `${r}🏰 ${e.text}`;
-      case 'end': return `${r}🏆 پایان نبرد — برنده: ${SIDE_FA[e.winner] || e.winner} (${e.reason})`;
+      case 'end': return `${r}🏆 Battle over — winner: ${SIDE_FA[e.winner] || e.winner} (${e.reason})`;
       default: return `${r}${e.kind}`;
     }
   }
@@ -184,7 +184,7 @@
     stage.innerHTML = '';
     rendered = GorzMap.renderMap(stage, view, { cellSize: 36, highlightSquads: true, seed: view.battleId || 0 });
     const legendHost = $('legendHost');
-    GorzMap.renderLegend(legendHost, 'fa');
+    GorzMap.renderLegend(legendHost, 'en');
   }
 
   function squadsOfRound(roundIdx) {
@@ -372,12 +372,12 @@
   }
 
   // ---------- playback ----------
-  function stopPlay() { if (playTimer) { clearInterval(playTimer); playTimer = null; $('btnPlay').textContent = '▶ پخش'; } }
+  function stopPlay() { if (playTimer) { clearInterval(playTimer); playTimer = null; $('btnPlay').textContent = '▶ Play'; } }
 
   function startPlay() {
     if (!current || current.mode !== 'replay') return;
     stopPlay();
-    $('btnPlay').textContent = '⏸ توقف';
+    $('btnPlay').textContent = '⏸ Pause';
     playTimer = setInterval(() => {
       if (cursorRound + 1 >= current.rounds.length) { stopPlay(); return; }
       drawRound(cursorRound + 1);
@@ -389,11 +389,11 @@
     const row = $('castlesRow');
     row.innerHTML = '';
     if (!objs || !objs.castles) return;
-    const fa = { westHome: 'قلعه باختر', eastHome: 'قلعه خاور', northKeep: 'دژ شمال', southKeep: 'دژ جنوب' };
+    const names = { westHome: 'West Castle', eastHome: 'East Castle', northKeep: 'North Keep', southKeep: 'South Keep' };
     for (const [key, owner] of Object.entries(objs.castles)) {
       const chip = document.createElement('div');
       chip.className = 'castle-chip ' + (owner === 'attacker' ? 'att' : owner === 'defender' ? 'def' : '');
-      chip.innerHTML = `<span class="dot"></span>${fa[key] || key} — ${owner ? SIDE_FA[owner] : 'بی‌طرف'}`;
+      chip.innerHTML = `<span class="dot"></span>${names[key] || key} — ${owner ? SIDE_FA[owner] : 'Neutral'}`;
       row.appendChild(chip);
     }
   }
@@ -402,7 +402,7 @@
   async function loadLive(battleId) {
     const r = await fetch('/api/watch/' + battleId);
     const data = await r.json();
-    if (!data.ok) return alert(data.error || 'خطا');
+    if (!data.ok) return alert(data.error || 'Error');
     stopPlay();
     current = {
       mode: 'live', battleId, view: data.view,
@@ -411,7 +411,7 @@
     };
     renderStatic(data.view);
     $('matchup').textContent = `${data.battle.attacker} ⚔ ${data.battle.defender}`;
-    $('stateBadge').textContent = '🔴 زنده — راند ' + data.battle.round;
+    $('stateBadge').textContent = '🔴 Live — round ' + data.battle.round;
     $('stateBadge').className = 'badge live';
     $('controls').hidden = true;
     $('hud').hidden = false;
@@ -424,7 +424,7 @@
   async function loadReplay(battleId) {
     const r = await fetch('/api/watch/' + battleId);
     const data = await r.json();
-    if (!data.ok) return alert(data.error || 'خطا');
+    if (!data.ok) return alert(data.error || 'Error');
     stopPlay();
     const v = data.view;
     // initial squads: server derives them from the log (initialSquads) or
@@ -444,12 +444,12 @@
     if (!terrain && v.initial && v.initial.terrain) terrain = v.initial.terrain;
     if (!terrain) {
       // fallback: regenerate the v3 map client-side? not available — show notice
-      stage.innerHTML = '<div class="empty">این نبرد قدیمی است و نقشهٔ آن ذخیره نشده. فقط رویدادها قابل نمایش است.</div>';
+      stage.innerHTML = '<div class="empty">This is an old battle whose map was not saved. Only the event log can be shown.</div>';
     } else {
       renderStatic({ grid: v.grid, terrain, castles: v.castles || {}, squads: [] });
     }
     $('matchup').textContent = `${data.battle.attacker} ⚔ ${data.battle.defender}`;
-    $('stateBadge').textContent = '🎬 پخش نبرد';
+    $('stateBadge').textContent = '🎬 Replay';
     $('stateBadge').className = 'badge';
     $('controls').hidden = false;
     $('hud').hidden = false;
@@ -468,8 +468,8 @@
     $('barA').style.width = a + '%'; $('barD').style.width = d + '%';
   }
   function updateHudFinal(winner) {
-    $('powA').textContent = winner === 'attacker' ? '🏆 برنده' : winner ? 'باخت' : 'مساوی';
-    $('powD').textContent = winner === 'defender' ? '🏆 برنده' : winner ? 'باخت' : 'مساوی';
+    $('powA').textContent = winner === 'attacker' ? '🏆 Winner' : winner ? 'Defeat' : 'Draw';
+    $('powD').textContent = winner === 'defender' ? '🏆 Winner' : winner ? 'Defeat' : 'Draw';
   }
 
   // ---------- battle list ----------
@@ -479,13 +479,13 @@
     const host = $('picker');
     host.innerHTML = '';
     if (!data.ok || !data.battles.length) {
-      host.innerHTML = '<span class="empty">هنوز نبردی ثبت نشده.</span>';
+      host.innerHTML = '<span class="empty">No battles recorded yet.</span>';
       return;
     }
     for (const b of data.battles.slice(0, 8)) {
       const btn = document.createElement('button');
-      const state = b.state === 'running' ? '🔴 زنده' : b.state === 'open' ? '⏳ در انتظار' : '🎬 ' + (b.round || '?') + ' راند';
-      btn.textContent = `نبرد #${b.id} — ${b.attacker} ضد ${b.defender} (${state})`;
+      const state = b.state === 'running' ? '🔴 Live' : b.state === 'open' ? '⏳ Waiting' : '🎬 ' + (b.round || '?') + ' rounds';
+      btn.textContent = `Battle #${b.id} — ${b.attacker} vs ${b.defender} (${state})`;
       btn.onclick = () => (b.state === 'finished' ? loadReplay(b.id) : loadLive(b.id));
       host.appendChild(btn);
     }

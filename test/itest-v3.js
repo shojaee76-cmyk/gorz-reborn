@@ -91,7 +91,7 @@ check('army: 1 commander (star) + 3 lieutenants, aide mult 0.85', () => {
   const lies = A.squads.filter((s) => !s.commander);
   assert.strictEqual(lies.length, 3);
   for (const l of lies) assert.ok(Math.abs(l.heroMult - 0.85) < 1e-9, `lieutenant heroMult ${l.heroMult}`);
-  assert.strictEqual(cmd[0].title, 'سردار');
+  assert.strictEqual(cmd[0].title, 'Commander');
 });
 check('deploy: mirrored spawns (fair start)', () => {
   const { st, A, D } = fresh(3, { cavalry: 70 }, { cavalry: 70 });
@@ -147,7 +147,7 @@ check('win: capital fall ends instantly', () => {
   st.all.forEach((s) => { if (s !== c) { s.x = -9; s.y = -9; } });
   const r = T.resolveRound(st, { attacker: T.validateOrders(st, 'attacker', { [c.id]: { move: { x: 19, y: 7 }, stance: 'assault' } }), defender: {} });
   assert.ok(r.outcome.over && r.outcome.winner === 'attacker', JSON.stringify(r.outcome));
-  assert.ok(String(r.outcome.reason).includes('سقوط'), 'reason should mention the fall');
+  assert.ok(String(r.outcome.reason).includes('fell'), 'reason should mention the fall');
 });
 check('win: siege of both keeps (3 rounds)', () => {
   const { st, A } = fresh(9, { cavalry: 70 });
@@ -160,7 +160,7 @@ check('win: siege of both keeps (3 rounds)', () => {
     n++;
     r = T.resolveRound(st, { attacker: T.validateOrders(st, 'attacker', { [c1.id]: { move: null, stance: 'hold' }, [c2.id]: { move: null, stance: 'hold' } }), defender: T.validateOrders(st, 'defender', {}) });
   }
-  assert.ok(r.outcome.over && r.outcome.winner === 'attacker' && String(r.outcome.reason).includes('دژ'), JSON.stringify(r.outcome));
+  assert.ok(r.outcome.over && r.outcome.winner === 'attacker' && String(r.outcome.reason).includes('keeps'), JSON.stringify(r.outcome));
   assert.strictEqual(n, TACTICS.siegeRoundsToWin);
 });
 check('engine: finished battle refuses extra rounds', () => {

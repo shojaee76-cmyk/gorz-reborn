@@ -139,9 +139,9 @@ async function main() {
   ok(ms.status === 200, 'missions fetched');
   ok(ms.data.missions.length >= 10, 'at least 10 seeded missions', ms.data.missions.length);
   const trainMission = ms.data.missions.find((m) => m.type === 'train' && m.target === 1);
-  ok(!!trainMission, 'train-1 mission exists (آغاز سربازخانه)');
+  ok(!!trainMission, 'train-1 mission exists (Boot Camp)');
   if (trainMission) {
-    ok(trainMission.title_fa.includes('سرباز'), 'mission has Persian title', trainMission.title_fa);
+    ok(trainMission.title.includes('Boot Camp'), 'mission has English title', trainMission.title);
     const claim = await api('POST', '/api/missions/claim', { mission_id: trainMission.mission_id }, cookie);
     ok(claim.status === 200, 'claim train mission reward', claim.data);
     const dupClaim = await api('POST', '/api/missions/claim', { mission_id: trainMission.mission_id }, cookie);

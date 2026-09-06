@@ -33,8 +33,8 @@ const crypto = require('crypto');
   while (rounds < 30) {
     const orders = {};
     for (const s of ent.data.view.squads) {
-      // only our squads (ids start with ح for attacker)
-      if (side === 'attacker' ? s.id.startsWith('ح') : s.id.startsWith('د')) {
+      // only our squads (ids start with A for attacker)
+      if (side === 'attacker' ? s.id.startsWith('A') : s.id.startsWith('B')) {
         orders[s.id] = { move: null, focus: null, stance: 'advance' }; // stand still, hold position
       }
     }

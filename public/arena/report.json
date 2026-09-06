@@ -1,0 +1,701 @@
+{
+  "runner": "gorz-hosted-runner",
+  "lineage": "ci-sparta",
+  "params": {
+    "gens": 5,
+    "pop": 16,
+    "baseSeed": 42,
+    "topN": 5
+  },
+  "startedAt": "2026-09-06T00:35:50.431Z",
+  "finishedAt": "2026-09-06T00:35:51.325Z",
+  "durationMs": 894,
+  "dbFile": "throwaway (deleted)",
+  "generations": [
+    {
+      "generation": 1,
+      "matches": 120,
+      "decisive": 120,
+      "decisiveRate": 1,
+      "errors": 0,
+      "top": [
+        {
+          "id": 1,
+          "name": "house-of-darius",
+          "fitness": 1194,
+          "fingerprint": "0.200|0.200|0.600|1|0|4|0.85|0.15|cavalry_first|0.60|0.95|0.50|0.30",
+          "composition": {
+            "swordsman": 0.2,
+            "archer": 0.2,
+            "cavalry": 0.6
+          }
+        },
+        {
+          "id": 2,
+          "name": "shield-of-leonidas",
+          "fitness": 1194,
+          "fingerprint": "0.550|0.300|0.150|5|2|0|0.20|0.90|closest|0.95|0.10|0.50|0.40",
+          "composition": {
+            "swordsman": 0.55,
+            "archer": 0.3,
+            "cavalry": 0.15
+          }
+        },
+        {
+          "id": 3,
+          "name": "forest-archer",
+          "fitness": 1194,
+          "fingerprint": "0.100|0.700|0.200|0|4|1|0.30|0.80|archer_first|0.70|0.50|0.10|0.85",
+          "composition": {
+            "swordsman": 0.1,
+            "archer": 0.7,
+            "cavalry": 0.2
+          }
+        },
+        {
+          "id": 4,
+          "name": "rush-plato",
+          "fitness": 1194,
+          "fingerprint": "0.500|0.250|0.250|3|2|2|0.80|0.40|closest|0.40|0.50|0.50|0.50",
+          "composition": {
+            "swordsman": 0.5,
+            "archer": 0.25,
+            "cavalry": 0.25
+          }
+        },
+        {
+          "id": 5,
+          "name": "genghis-wolf",
+          "fitness": 1194,
+          "fingerprint": "0.050|0.050|0.900|0|0|6|0.95|0.05|archer_first|0.50|1.00|0.50|0.20",
+          "composition": {
+            "swordsman": 0.05,
+            "archer": 0.05,
+            "cavalry": 0.9
+          }
+        }
+      ]
+    },
+    {
+      "generation": 2,
+      "matches": 120,
+      "decisive": 120,
+      "decisiveRate": 1,
+      "errors": 0,
+      "top": [
+        {
+          "id": 17,
+          "name": "house-of-darius",
+          "fitness": 1232,
+          "fingerprint": "0.200|0.200|0.600|1|0|4|0.85|0.15|cavalry_first|0.60|0.95|0.50|0.30",
+          "composition": {
+            "swordsman": 0.2,
+            "archer": 0.2,
+            "cavalry": 0.6
+          }
+        },
+        {
+          "id": 18,
+          "name": "shield-of-leonidas",
+          "fitness": 1232,
+          "fingerprint": "0.550|0.300|0.150|5|2|0|0.20|0.90|closest|0.95|0.10|0.50|0.40",
+          "composition": {
+            "swordsman": 0.55,
+            "archer": 0.3,
+            "cavalry": 0.15
+          }
+        },
+        {
+          "id": 19,
+          "name": "forest-archer",
+          "fitness": 1232,
+          "fingerprint": "0.100|0.700|0.200|0|4|1|0.30|0.80|archer_first|0.70|0.50|0.10|0.85",
+          "composition": {
+            "swordsman": 0.1,
+            "archer": 0.7,
+            "cavalry": 0.2
+          }
+        },
+        {
+          "id": 20,
+          "name": "rush-plato",
+          "fitness": 1232,
+          "fingerprint": "0.500|0.250|0.250|3|2|2|0.80|0.40|closest|0.40|0.50|0.50|0.50",
+          "composition": {
+            "swordsman": 0.5,
+            "archer": 0.25,
+            "cavalry": 0.25
+          }
+        },
+        {
+          "id": 21,
+          "name": "genghis-wolf",
+          "fitness": 1232,
+          "fingerprint": "0.050|0.050|0.900|0|0|6|0.95|0.05|archer_first|0.50|1.00|0.50|0.20",
+          "composition": {
+            "swordsman": 0.05,
+            "archer": 0.05,
+            "cavalry": 0.9
+          }
+        }
+      ]
+    },
+    {
+      "generation": 3,
+      "matches": 120,
+      "decisive": 115,
+      "decisiveRate": 0.9583333333333334,
+      "errors": 0,
+      "top": [
+        {
+          "id": 33,
+          "name": "house-of-darius",
+          "fitness": 1250,
+          "fingerprint": "0.200|0.200|0.600|1|0|4|0.85|0.15|cavalry_first|0.60|0.95|0.50|0.30",
+          "composition": {
+            "swordsman": 0.2,
+            "archer": 0.2,
+            "cavalry": 0.6
+          }
+        },
+        {
+          "id": 35,
+          "name": "forest-archer",
+          "fitness": 1250,
+          "fingerprint": "0.100|0.700|0.200|0|4|1|0.30|0.80|archer_first|0.70|0.50|0.10|0.85",
+          "composition": {
+            "swordsman": 0.1,
+            "archer": 0.7,
+            "cavalry": 0.2
+          }
+        },
+        {
+          "id": 36,
+          "name": "rush-plato",
+          "fitness": 1250,
+          "fingerprint": "0.500|0.250|0.250|3|2|2|0.80|0.40|closest|0.40|0.50|0.50|0.50",
+          "composition": {
+            "swordsman": 0.5,
+            "archer": 0.25,
+            "cavalry": 0.25
+          }
+        },
+        {
+          "id": 37,
+          "name": "genghis-wolf",
+          "fitness": 1250,
+          "fingerprint": "0.050|0.050|0.900|0|0|6|0.95|0.05|archer_first|0.50|1.00|0.50|0.20",
+          "composition": {
+            "swordsman": 0.05,
+            "archer": 0.05,
+            "cavalry": 0.9
+          }
+        },
+        {
+          "id": 34,
+          "name": "shield-of-leonidas",
+          "fitness": 1245,
+          "fingerprint": "0.550|0.300|0.150|5|2|0|0.20|0.90|closest|0.95|0.10|0.50|0.40",
+          "composition": {
+            "swordsman": 0.55,
+            "archer": 0.3,
+            "cavalry": 0.15
+          }
+        }
+      ]
+    },
+    {
+      "generation": 4,
+      "matches": 120,
+      "decisive": 103,
+      "decisiveRate": 0.8583333333333333,
+      "errors": 0,
+      "top": [
+        {
+          "id": 49,
+          "name": "house-of-darius",
+          "fitness": 1259,
+          "fingerprint": "0.200|0.200|0.600|1|0|4|0.85|0.15|cavalry_first|0.60|0.95|0.50|0.30",
+          "composition": {
+            "swordsman": 0.2,
+            "archer": 0.2,
+            "cavalry": 0.6
+          }
+        },
+        {
+          "id": 50,
+          "name": "forest-archer",
+          "fitness": 1259,
+          "fingerprint": "0.100|0.700|0.200|0|4|1|0.30|0.80|archer_first|0.70|0.50|0.10|0.85",
+          "composition": {
+            "swordsman": 0.1,
+            "archer": 0.7,
+            "cavalry": 0.2
+          }
+        },
+        {
+          "id": 51,
+          "name": "rush-plato",
+          "fitness": 1259,
+          "fingerprint": "0.500|0.250|0.250|3|2|2|0.80|0.40|closest|0.40|0.50|0.50|0.50",
+          "composition": {
+            "swordsman": 0.5,
+            "archer": 0.25,
+            "cavalry": 0.25
+          }
+        },
+        {
+          "id": 52,
+          "name": "genghis-wolf",
+          "fitness": 1259,
+          "fingerprint": "0.050|0.050|0.900|0|0|6|0.95|0.05|archer_first|0.50|1.00|0.50|0.20",
+          "composition": {
+            "swordsman": 0.05,
+            "archer": 0.05,
+            "cavalry": 0.9
+          }
+        },
+        {
+          "id": 53,
+          "name": "shield-of-leonidas",
+          "fitness": 1246,
+          "fingerprint": "0.550|0.300|0.150|5|2|0|0.20|0.90|closest|0.95|0.10|0.50|0.40",
+          "composition": {
+            "swordsman": 0.55,
+            "archer": 0.3,
+            "cavalry": 0.15
+          }
+        }
+      ]
+    },
+    {
+      "generation": 5,
+      "matches": 120,
+      "decisive": 120,
+      "decisiveRate": 1,
+      "errors": 0,
+      "top": [
+        {
+          "id": 65,
+          "name": "house-of-darius",
+          "fitness": 1264,
+          "fingerprint": "0.200|0.200|0.600|1|0|4|0.85|0.15|cavalry_first|0.60|0.95|0.50|0.30",
+          "composition": {
+            "swordsman": 0.2,
+            "archer": 0.2,
+            "cavalry": 0.6
+          }
+        },
+        {
+          "id": 66,
+          "name": "forest-archer",
+          "fitness": 1264,
+          "fingerprint": "0.100|0.700|0.200|0|4|1|0.30|0.80|archer_first|0.70|0.50|0.10|0.85",
+          "composition": {
+            "swordsman": 0.1,
+            "archer": 0.7,
+            "cavalry": 0.2
+          }
+        },
+        {
+          "id": 67,
+          "name": "rush-plato",
+          "fitness": 1264,
+          "fingerprint": "0.500|0.250|0.250|3|2|2|0.80|0.40|closest|0.40|0.50|0.50|0.50",
+          "composition": {
+            "swordsman": 0.5,
+            "archer": 0.25,
+            "cavalry": 0.25
+          }
+        },
+        {
+          "id": 68,
+          "name": "genghis-wolf",
+          "fitness": 1264,
+          "fingerprint": "0.050|0.050|0.900|0|0|6|0.95|0.05|archer_first|0.50|1.00|0.50|0.20",
+          "composition": {
+            "swordsman": 0.05,
+            "archer": 0.05,
+            "cavalry": 0.9
+          }
+        },
+        {
+          "id": 69,
+          "name": "house-of-darius",
+          "fitness": 1259,
+          "fingerprint": "0.200|0.200|0.600|1|0|4|0.85|0.15|cavalry_first|0.60|0.95|0.50|0.30",
+          "composition": {
+            "swordsman": 0.2,
+            "archer": 0.2,
+            "cavalry": 0.6
+          }
+        }
+      ]
+    }
+  ],
+  "leaderboard": [
+    {
+      "id": 65,
+      "name": "house-of-darius",
+      "generation": 5,
+      "parentAId": 49,
+      "parentBId": null,
+      "fitness": 1264,
+      "wins": 9,
+      "losses": 6,
+      "draws": 0,
+      "fingerprint": "0.200|0.200|0.600|1|0|4|0.85|0.15|cavalry_first|0.60|0.95|0.50|0.30",
+      "genome": {
+        "composition": {
+          "swordsman": 0.2,
+          "archer": 0.2,
+          "cavalry": 0.6
+        },
+        "training": {
+          "swordsman": 1,
+          "archer": 0,
+          "cavalry": 4
+        },
+        "tactics": {
+          "aggression": 0.85,
+          "defense": 0.15,
+          "targetPriority": "cavalry_first",
+          "focusFire": 0.6,
+          "cavalryCharge": 0.95,
+          "rangedEngage": 0.5,
+          "keepCapture": 0.3
+        }
+      }
+    },
+    {
+      "id": 66,
+      "name": "forest-archer",
+      "generation": 5,
+      "parentAId": 50,
+      "parentBId": null,
+      "fitness": 1264,
+      "wins": 3,
+      "losses": 12,
+      "draws": 0,
+      "fingerprint": "0.100|0.700|0.200|0|4|1|0.30|0.80|archer_first|0.70|0.50|0.10|0.85",
+      "genome": {
+        "composition": {
+          "swordsman": 0.1,
+          "archer": 0.7,
+          "cavalry": 0.2
+        },
+        "training": {
+          "swordsman": 0,
+          "archer": 4,
+          "cavalry": 1
+        },
+        "tactics": {
+          "aggression": 0.3,
+          "defense": 0.8,
+          "targetPriority": "archer_first",
+          "focusFire": 0.7,
+          "cavalryCharge": 0.5,
+          "rangedEngage": 0.1,
+          "keepCapture": 0.85
+        }
+      }
+    },
+    {
+      "id": 67,
+      "name": "rush-plato",
+      "generation": 5,
+      "parentAId": 51,
+      "parentBId": null,
+      "fitness": 1264,
+      "wins": 5,
+      "losses": 10,
+      "draws": 0,
+      "fingerprint": "0.500|0.250|0.250|3|2|2|0.80|0.40|closest|0.40|0.50|0.50|0.50",
+      "genome": {
+        "composition": {
+          "swordsman": 0.5,
+          "archer": 0.25,
+          "cavalry": 0.25
+        },
+        "training": {
+          "swordsman": 3,
+          "archer": 2,
+          "cavalry": 2
+        },
+        "tactics": {
+          "aggression": 0.8,
+          "defense": 0.4,
+          "targetPriority": "closest",
+          "focusFire": 0.4,
+          "cavalryCharge": 0.5,
+          "rangedEngage": 0.5,
+          "keepCapture": 0.5
+        }
+      }
+    },
+    {
+      "id": 68,
+      "name": "genghis-wolf",
+      "generation": 5,
+      "parentAId": 52,
+      "parentBId": null,
+      "fitness": 1264,
+      "wins": 10,
+      "losses": 5,
+      "draws": 0,
+      "fingerprint": "0.050|0.050|0.900|0|0|6|0.95|0.05|archer_first|0.50|1.00|0.50|0.20",
+      "genome": {
+        "composition": {
+          "swordsman": 0.05,
+          "archer": 0.05,
+          "cavalry": 0.9
+        },
+        "training": {
+          "swordsman": 0,
+          "archer": 0,
+          "cavalry": 6
+        },
+        "tactics": {
+          "aggression": 0.95,
+          "defense": 0.05,
+          "targetPriority": "archer_first",
+          "focusFire": 0.5,
+          "cavalryCharge": 1,
+          "rangedEngage": 0.5,
+          "keepCapture": 0.2
+        }
+      }
+    },
+    {
+      "id": 69,
+      "name": "house-of-darius",
+      "generation": 5,
+      "parentAId": 33,
+      "parentBId": null,
+      "fitness": 1259,
+      "wins": 10,
+      "losses": 5,
+      "draws": 0,
+      "fingerprint": "0.200|0.200|0.600|1|0|4|0.85|0.15|cavalry_first|0.60|0.95|0.50|0.30",
+      "genome": {
+        "composition": {
+          "swordsman": 0.2,
+          "archer": 0.2,
+          "cavalry": 0.6
+        },
+        "training": {
+          "swordsman": 1,
+          "archer": 0,
+          "cavalry": 4
+        },
+        "tactics": {
+          "aggression": 0.85,
+          "defense": 0.15,
+          "targetPriority": "cavalry_first",
+          "focusFire": 0.6,
+          "cavalryCharge": 0.95,
+          "rangedEngage": 0.5,
+          "keepCapture": 0.3
+        }
+      }
+    },
+    {
+      "id": 70,
+      "name": "house-of-darius.forest-archer",
+      "generation": 5,
+      "parentAId": 33,
+      "parentBId": 50,
+      "fitness": 1194,
+      "wins": 15,
+      "losses": 0,
+      "draws": 0,
+      "fingerprint": "0.185|0.391|0.424|0|0|3|0.91|0.22|archer_first|0.63|0.47|0.62|0.74",
+      "genome": {
+        "composition": {
+          "swordsman": 0.18487441032837748,
+          "archer": 0.3908765069854393,
+          "cavalry": 0.42424908268618333
+        },
+        "training": {
+          "swordsman": 0,
+          "archer": 0,
+          "cavalry": 3
+        },
+        "tactics": {
+          "aggression": 0.9062136521562933,
+          "defense": 0.22435920713469387,
+          "targetPriority": "archer_first",
+          "focusFire": 0.6346069551771506,
+          "cavalryCharge": 0.4741198955802247,
+          "rangedEngage": 0.6192364129237831,
+          "keepCapture": 0.743336929869838
+        }
+      }
+    },
+    {
+      "id": 71,
+      "name": "house-of-darius.rush-plato",
+      "generation": 5,
+      "parentAId": 49,
+      "parentBId": 51,
+      "fitness": 1194,
+      "wins": 8,
+      "losses": 7,
+      "draws": 0,
+      "fingerprint": "0.225|0.198|0.577|4|2|2|0.95|0.26|cavalry_first|0.36|0.90|0.55|0.63",
+      "genome": {
+        "composition": {
+          "swordsman": 0.22465896396988694,
+          "archer": 0.19805494590023245,
+          "cavalry": 0.5772860901298805
+        },
+        "training": {
+          "swordsman": 4,
+          "archer": 2,
+          "cavalry": 2
+        },
+        "tactics": {
+          "aggression": 0.9491068232106046,
+          "defense": 0.25516505432315173,
+          "targetPriority": "cavalry_first",
+          "focusFire": 0.35577939730137587,
+          "cavalryCharge": 0.9044269180623814,
+          "rangedEngage": 0.551285118656233,
+          "keepCapture": 0.6334200470708311
+        }
+      }
+    },
+    {
+      "id": 72,
+      "name": "house-of-darius.rush-plato",
+      "generation": 5,
+      "parentAId": 49,
+      "parentBId": 51,
+      "fitness": 1194,
+      "wins": 12,
+      "losses": 3,
+      "draws": 0,
+      "fingerprint": "0.351|0.185|0.464|3|1|4|0.69|0.02|cavalry_first|0.55|0.59|0.42|0.25",
+      "genome": {
+        "composition": {
+          "swordsman": 0.35107375679634484,
+          "archer": 0.18461258192068603,
+          "cavalry": 0.4643136612829691
+        },
+        "training": {
+          "swordsman": 3,
+          "archer": 1,
+          "cavalry": 4
+        },
+        "tactics": {
+          "aggression": 0.6934300349326805,
+          "defense": 0.024125001020729536,
+          "targetPriority": "cavalry_first",
+          "focusFire": 0.5513687722384929,
+          "cavalryCharge": 0.5906827167840675,
+          "rangedEngage": 0.4192759746452793,
+          "keepCapture": 0.24937244066968559
+        }
+      }
+    },
+    {
+      "id": 73,
+      "name": "house-of-darius.house-of-darius",
+      "generation": 5,
+      "parentAId": 49,
+      "parentBId": 33,
+      "fitness": 1194,
+      "wins": 8,
+      "losses": 7,
+      "draws": 0,
+      "fingerprint": "0.235|0.212|0.554|1|0|4|0.93|0.01|cavalry_first|0.53|1.00|0.37|0.43",
+      "genome": {
+        "composition": {
+          "swordsman": 0.23462049386663328,
+          "archer": 0.21162699479910996,
+          "cavalry": 0.5537525113342568
+        },
+        "training": {
+          "swordsman": 1,
+          "archer": 0,
+          "cavalry": 4
+        },
+        "tactics": {
+          "aggression": 0.9277315208688378,
+          "defense": 0.010780150769278407,
+          "targetPriority": "cavalry_first",
+          "focusFire": 0.5314644275698811,
+          "cavalryCharge": 1,
+          "rangedEngage": 0.3667219880502671,
+          "keepCapture": 0.4271189402556047
+        }
+      }
+    },
+    {
+      "id": 74,
+      "name": "rush-plato.genghis-wolf",
+      "generation": 5,
+      "parentAId": 51,
+      "parentBId": 52,
+      "fitness": 1194,
+      "wins": 4,
+      "losses": 11,
+      "draws": 0,
+      "fingerprint": "0.520|0.234|0.245|2|1|2|0.71|0.52|archer_first|0.41|0.36|0.54|0.39",
+      "genome": {
+        "composition": {
+          "swordsman": 0.5202957626739755,
+          "archer": 0.2342838496049541,
+          "cavalry": 0.24542038772107033
+        },
+        "training": {
+          "swordsman": 2,
+          "archer": 1,
+          "cavalry": 2
+        },
+        "tactics": {
+          "aggression": 0.7063102849526331,
+          "defense": 0.52198119640816,
+          "targetPriority": "archer_first",
+          "focusFire": 0.40569939429406077,
+          "cavalryCharge": 0.36225531515665355,
+          "rangedEngage": 0.538343970128335,
+          "keepCapture": 0.38856542950961737
+        }
+      }
+    }
+  ],
+  "champion": {
+    "id": 65,
+    "name": "house-of-darius",
+    "generation": 5,
+    "parentAId": 49,
+    "parentBId": null,
+    "fitness": 1264,
+    "wins": 9,
+    "losses": 6,
+    "draws": 0,
+    "fingerprint": "0.200|0.200|0.600|1|0|4|0.85|0.15|cavalry_first|0.60|0.95|0.50|0.30",
+    "genome": {
+      "composition": {
+        "swordsman": 0.2,
+        "archer": 0.2,
+        "cavalry": 0.6
+      },
+      "training": {
+        "swordsman": 1,
+        "archer": 0,
+        "cavalry": 4
+      },
+      "tactics": {
+        "aggression": 0.85,
+        "defense": 0.15,
+        "targetPriority": "cavalry_first",
+        "focusFire": 0.6,
+        "cavalryCharge": 0.95,
+        "rangedEngage": 0.5,
+        "keepCapture": 0.3
+      }
+    }
+  }
+}

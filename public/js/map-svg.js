@@ -254,17 +254,16 @@
   }
 
   // legend: what every element means (user demand: elements must show what they are)
-  function renderLegend(container, lang) {
-    const fa = lang !== 'en';
+  function renderLegend(container) {
     const items = [
-      { draw: (g, x, y, s) => T.plain(g, x, y, s, 0, 1), fa: 'دشت', en: 'Plain — open ground' },
-      { draw: (g, x, y, s) => T.hill(g, x, y, s), fa: 'تپه +۱۵٪ حمله', en: 'Hill +15% attack' },
-      { draw: (g, x, y, s) => T.forest(g, x, y, s, 0, 1), fa: 'جنگل +۳۵٪ دفاع، حمله سواره ممنوع', en: 'Forest +35% def, no charge' },
-      { draw: (g, x, y, s) => T.jungle(g, x, y, s), fa: 'جنگل انبوه +۵۰٪ دفاع، کند', en: 'Jungle +50% def, slow (2MP)' },
-      { draw: (g, x, y, s) => T.water(g, x, y, s, 0, 1, 0), fa: 'آب — غیرقابل عبور', en: 'Water — impassable' },
-      { draw: (g, x, y, s) => T.bridge(g, x, y, s), fa: 'پل — تنها گذرگاه', en: 'Bridge — the only crossing' },
-      { draw: (g, x, y, s) => T.mountain(g, x, y, s), fa: 'کوه — غیرقابل عبور', en: 'Mountain — impassable' },
-      { draw: (g, x, y, s) => T.castle(g, x, y, s, null), fa: 'قلعه — هدف', en: 'Castle — objective' },
+      { draw: (g, x, y, s) => T.plain(g, x, y, s, 0, 1), label: 'Plain — open ground' },
+      { draw: (g, x, y, s) => T.hill(g, x, y, s), label: 'Hill +15% attack' },
+      { draw: (g, x, y, s) => T.forest(g, x, y, s, 0, 1), label: 'Forest +35% def, no charge' },
+      { draw: (g, x, y, s) => T.jungle(g, x, y, s), label: 'Jungle +50% def, slow (2MP)' },
+      { draw: (g, x, y, s) => T.water(g, x, y, s, 0, 1, 0), label: 'Water — impassable' },
+      { draw: (g, x, y, s) => T.bridge(g, x, y, s), label: 'Bridge — the only crossing' },
+      { draw: (g, x, y, s) => T.mountain(g, x, y, s), label: 'Mountain — impassable' },
+      { draw: (g, x, y, s) => T.castle(g, x, y, s, null), label: 'Castle — objective' },
     ];
     container.innerHTML = '';
     const wrap = document.createElement('div');
@@ -276,7 +275,7 @@
       it.draw(mini, 0, 0, 30, 0, 1, 0);
       row.appendChild(mini);
       const lbl = document.createElement('span');
-      lbl.textContent = fa ? it.fa : it.en;
+      lbl.textContent = it.label;
       row.appendChild(lbl);
       wrap.appendChild(row);
     }

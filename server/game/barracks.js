@@ -55,7 +55,7 @@ function refreshPoints(userId, level) {
 
 function spendPoints(userId, amount, level) {
   const { points } = refreshPoints(userId, level);
-  if (points < amount) throw new GameError(400, 'امتیاز آموزش کافی ندارید.');
+  if (points < amount) throw new GameError(400, 'Not enough training points.');
   db.prepare('UPDATE training_points SET points = points - ?, last_update = ? WHERE user_id = ?').run(
     amount,
     Math.floor(Date.now() / 1000),
@@ -85,10 +85,10 @@ function statLevel(soldier, stat) {
 // Train `stat` ('attack' or 'defense') for `count` units.
 // Cost: gold + training points per unit per point of stat.
 function train(userId, type, stat, count) {
-  if (!TYPES.includes(type)) throw new GameError(400, 'نوع سرباز نامعتبر است.');
-  if (!['attack', 'defense'].includes(stat)) throw new GameError(400, 'آمار نامعتبر است.');
+  if (!TYPES.includes(type)) throw new GameError(400, 'Invalid soldier type.');
+  if (!['attack', 'defense'].includes(stat)) throw new GameError(400, 'Invalid stat.');
   count = Math.floor(Number(count) || 0);
-  if (count <= 0) throw new GameError(400, 'تعداد باید بیشتر از صفر باشد.');
+  if (count <= 0) throw new GameError(400, 'Count must be greater than zero.');
 
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
   const s = ensureRow(userId, type);
@@ -97,7 +97,7 @@ function train(userId, type, stat, count) {
   const cap = maxStatLevel(kLvl);
   const curLevel = statLevel(s, stat);
   if (curLevel >= cap) {
-    throw new GameError(400, `سطح دانش کافی نیست؛ حداکثر آموزش در دانش ${kLvl} تا سطح ${cap} است.`);
+    throw new GameError(400, `Knowledge level too low; at knowledge ${kLvl} the training cap is level ${cap}.`);
   }
 
   const unitCostGold = spec.trainCostGold;
@@ -112,7 +112,7 @@ function train(userId, type, stat, count) {
 
   const tx = db.transaction(() => {
     // charge gold first (bank validates balance)
-    adjust(userId, { gold: -totalGold, kind: 'train', note: `آموزش ${count} ${spec.name} (${stat})` });
+    adjust(userId, { gold: -totalGold, kind: 'train', note: `Trained ${count} ${spec.name} (${stat})` });
     spendPoints(userId, totalPoints, user.level);
     db.prepare(
       `UPDATE soldiers SET ${stat} = ${stat} + ? WHERE user_id = ? AND type = ?`
@@ -125,15 +125,15 @@ function train(userId, type, stat, count) {
 
 // Recruit more soldiers of a type (gold-only; units get base stats).
 function recruit(userId, type, count) {
-  if (!TYPES.includes(type)) throw new GameError(400, 'نوع سرباز نامعتبر است.');
+  if (!TYPES.includes(type)) throw new GameError(400, 'Invalid soldier type.');
   count = Math.floor(Number(count) || 0);
-  if (count <= 0) throw new GameError(400, 'تعداد باید بیشتر از صفر باشد.');
+  if (count <= 0) throw new GameError(400, 'Count must be greater than zero.');
 
   const spec = SOLDIERS[type];
   const costPer = Math.round(spec.trainCostGold * 4); // recruiting is costlier than training a point
   const total = costPer * count;
 
-  adjust(userId, { gold: -total, kind: 'recruit', note: `سربازگیری ${count} ${spec.name}` });
+  adjust(userId, { gold: -total, kind: 'recruit', note: `Recruited ${count} ${spec.name}` });
   const s = ensureRow(userId, type);
   db.prepare('UPDATE soldiers SET count = count + ? WHERE user_id = ? AND type = ?').run(count, userId, type);
   return row(userId, type);

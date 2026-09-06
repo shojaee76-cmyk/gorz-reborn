@@ -8,15 +8,15 @@
 
   /* ---------- helpers ---------- */
   const $ = (id) => document.getElementById(id);
-  const fmt = (n) => Number(n || 0).toLocaleString('fa-IR');
-  const SOLDIER_NAMES = { swordsman: 'شمشیرزن', archer: 'کمان‌دار', cavalry: 'سوار' };
+  const fmt = (n) => Number(n || 0).toLocaleString('en-US');
+  const SOLDIER_NAMES = { swordsman: 'Swordsman', archer: 'Archer', cavalry: 'Cavalry' };
   const SOLDIER_ICONS = { swordsman: '⚔️', archer: '🏹', cavalry: '🐎' };
   const KIND_LABELS = {
-    signup: 'هدیهٔ ثبت‌نام', train: 'آموزش سرباز', recruit: 'سربازگیری',
-    battle: 'نبرد', mission_reward: 'جایزهٔ ماموریت', levelup: 'ارتقای سطح',
-    buy: 'خرید از بازار', sell: 'فروش در بازار', buy_diamond: 'خرید الماس',
-    list: 'ثبت آگهی', cancel_listing: 'لغو آگهی', hero_levelup: 'ارتقای قهرمان',
-    generic: 'تراکنش',
+    signup: 'Signup gift', train: 'Soldier training', recruit: 'Recruitment',
+    battle: 'Battle', mission_reward: 'Mission reward', levelup: 'Level up',
+    buy: 'Market purchase', sell: 'Market sale', buy_diamond: 'Diamond purchase',
+    list: 'Listing created', cancel_listing: 'Listing cancelled', hero_levelup: 'Hero level up',
+    generic: 'Transaction',
   };
 
   async function api(path, opts = {}) {
@@ -26,7 +26,7 @@
     });
     let data = {};
     try { data = await res.json(); } catch { /* no body */ }
-    if (!res.ok) throw new Error(data.error || `خطا (${res.status})`);
+    if (!res.ok) throw new Error(data.error || `Error (${res.status})`);
     return data;
   }
 
@@ -63,14 +63,14 @@
     function setMode(m) {
       mode = m;
       const login = m === 'login';
-      title.textContent = login ? 'ورود به گرز نو' : 'ساخت حساب جدید';
-      sub.textContent = login ? 'با حساب خود وارد شوید.' : 'رایگان ثبت‌نام کن و فرمانده شو.';
+      title.textContent = login ? 'Sign in to Gorz Reborn' : 'Create a new account';
+      sub.textContent = login ? 'Log in with your account.' : 'Register for free and take command.';
       $('tab-login').classList.toggle('active', login);
       $('tab-register').classList.toggle('active', !login);
       confirmGroup.classList.toggle('hidden', login);
-      submitBtn.textContent = login ? 'ورود' : 'ثبت‌نام';
-      altText.textContent = login ? 'حساب ندارید؟' : 'از قبل حساب دارید؟';
-      altBtn.textContent = login ? 'ثبت‌نام کنید' : 'وارد شوید';
+      submitBtn.textContent = login ? 'Log in' : 'Register';
+      altText.textContent = login ? 'No account yet?' : 'Already have an account?';
+      altBtn.textContent = login ? 'Register' : 'Log in';
       errBox.classList.remove('show');
       $('password').setAttribute('autocomplete', login ? 'current-password' : 'new-password');
       $('confirm').setAttribute('autocomplete', 'new-password');
@@ -86,14 +86,14 @@
       const password = $('password').value;
       const confirm = $('confirm').value;
 
-      if (!email || !password) return showErr('ایمیل و رمز عبور را وارد کنید.');
+      if (!email || !password) return showErr('Enter your email and password.');
       if (mode === 'register') {
-        if (password.length < 6) return showErr('رمز عبور باید حداقل ۶ کاراکتر باشد.');
-        if (password !== confirm) return showErr('تکرار رمز عبور مطابقت ندارد.');
+        if (password.length < 6) return showErr('Password must be at least 6 characters.');
+        if (password !== confirm) return showErr('Passwords do not match.');
       }
 
       submitBtn.disabled = true;
-      submitBtn.textContent = mode === 'login' ? 'در حال ورود…' : 'در حال ساخت حساب…';
+      submitBtn.textContent = mode === 'login' ? 'Signing in…' : 'Creating account…';
       try {
         await api(`/api/auth/${mode}`, {
           method: 'POST',
@@ -104,7 +104,7 @@
         showErr(err.message);
       } finally {
         submitBtn.disabled = false;
-        submitBtn.textContent = mode === 'login' ? 'ورود' : 'ثبت‌نام';
+        submitBtn.textContent = mode === 'login' ? 'Log in' : 'Register';
       }
     });
 
@@ -244,7 +244,7 @@
               </li>`
             )
             .join('')}</ul>`
-        : '<p class="empty">لشگری ندارید. به سربازخانه بروید و سرباز بگیرید.</p>';
+        : '<p class="empty">You have no army. Visit the barracks to recruit soldiers.</p>';
       $('ov-army').innerHTML = armyHtml;
 
       // best hero
@@ -254,14 +254,14 @@
             <div class="hero-avatar">⚔️</div>
             <div class="hero-info">
               <div class="hero-name">${hero.name}</div>
-              <div class="hero-lvl">سطح <span class="num">${fmt(hero.level)}</span></div>
+              <div class="hero-lvl">Level <span class="num">${fmt(hero.level)}</span></div>
               <div class="hero-xp">
-                <div class="progress-label"><span>تجربه</span><span class="num">${fmt(hero.xp)} / ${fmt(hero.level * 250)}</span></div>
+                <div class="progress-label"><span>Experience</span><span class="num">${fmt(hero.xp)} / ${fmt(hero.level * 250)}</span></div>
                 <div class="progress"><div class="fill" style="width:${heroXpPct(hero)}%"></div></div>
               </div>
             </div>
           </div>`
-        : '<p class="empty">هنوز قهرمانی ندارید.</p>';
+        : '<p class="empty">You have no heroes yet.</p>';
 
       // active missions (max 3, first not-done)
       const active = missions.filter((m) => !m.done).slice(0, 3);
@@ -274,7 +274,7 @@
               </div>`
             )
             .join('')
-        : '<p class="empty">همهٔ ماموریت‌ها کامل شده‌اند. آفرین! 🎉</p>';
+        : '<p class="empty">All missions completed. Well done! 🎉</p>';
     } catch { /* leave placeholders */ }
   }
 
@@ -312,29 +312,29 @@
     return `<div class="unit-card">
       <div class="u-head">
         <div class="flex"><span class="u-icon">${SOLDIER_ICONS[u.type]}</span><h3>${SOLDIER_NAMES[u.type]}</h3></div>
-        <span class="knowledge-tag" title="سطح دانش">📖 دانش ${kLvl}</span>
+        <span class="knowledge-tag" title="Knowledge level">📖 Knowledge ${kLvl}</span>
       </div>
       <div class="u-stats">
-        <div class="u-stat"><span class="k">حمله</span><span class="v num">${fmt(u.attack)}</span></div>
-        <div class="u-stat"><span class="k">دفاع</span><span class="v num">${fmt(u.defense)}</span></div>
-        <div class="u-stat"><span class="k">سرعت</span><span class="v num">${fmt(spec[u.type] || 0)}</span></div>
+        <div class="u-stat"><span class="k">Attack</span><span class="v num">${fmt(u.attack)}</span></div>
+        <div class="u-stat"><span class="k">Defense</span><span class="v num">${fmt(u.defense)}</span></div>
+        <div class="u-stat"><span class="k">Speed</span><span class="v num">${fmt(spec[u.type] || 0)}</span></div>
       </div>
-      <p class="u-count">تعداد: <span class="num">${fmt(u.count)}</span></p>
+      <p class="u-count">Count: <span class="num">${fmt(u.count)}</span></p>
       <div class="u-actions">
         <div class="u-train-row">
-          <input type="number" class="train-count" data-type="${u.type}" data-stat="attack" min="1" value="1" placeholder="تعداد" />
-          <button class="btn btn-sm train-btn" data-type="${u.type}" data-stat="attack" title="آموزش حمله">آموزش حمله</button>
+          <input type="number" class="train-count" data-type="${u.type}" data-stat="attack" min="1" value="1" placeholder="Qty" />
+          <button class="btn btn-sm train-btn" data-type="${u.type}" data-stat="attack" title="Train attack">Train attack</button>
         </div>
         <div class="u-train-row">
-          <input type="number" class="train-count" data-type="${u.type}" data-stat="defense" min="1" value="1" placeholder="تعداد" />
-          <button class="btn btn-sm train-btn" data-type="${u.type}" data-stat="defense" title="آموزش دفاع">آموزش دفاع</button>
+          <input type="number" class="train-count" data-type="${u.type}" data-stat="defense" min="1" value="1" placeholder="Qty" />
+          <button class="btn btn-sm train-btn" data-type="${u.type}" data-stat="defense" title="Train defense">Train defense</button>
         </div>
         <div class="u-train-row">
-          <input type="number" class="recruit-count" data-type="${u.type}" min="1" value="10" placeholder="تعداد" />
-          <button class="btn btn-sm btn-primary recruit-btn" data-type="${u.type}">سربازگیری</button>
+          <input type="number" class="recruit-count" data-type="${u.type}" min="1" value="10" placeholder="Qty" />
+          <button class="btn btn-sm btn-primary recruit-btn" data-type="${u.type}">Recruit</button>
         </div>
       </div>
-      <p class="small dim">هزینهٔ آموزش: <span class="num">${fmt(per)}</span> طلا و <span class="num">${fmt(u.type === 'cavalry' ? 3 : 2)}</span> امتیاز به ازای هر سرباز</p>
+      <p class="small dim">Training cost: <span class="num">${fmt(per)}</span> gold and <span class="num">${fmt(u.type === 'cavalry' ? 3 : 2)}</span> points per soldier</p>
     </div>`;
   }
 
@@ -351,7 +351,7 @@
             method: 'POST',
             body: JSON.stringify({ type, stat, count }),
           });
-          toast(`آموزش انجام شد: ${count} ${SOLDIER_NAMES[type]}`, 'success');
+          toast(`Training done: ${count} ${SOLDIER_NAMES[type]}`, 'success');
           await refreshStats();
           await loadBarracks();
         } catch (err) {
@@ -371,7 +371,7 @@
             method: 'POST',
             body: JSON.stringify({ type, count }),
           });
-          toast(`${count} ${SOLDIER_NAMES[type]} به لشگر پیوست`, 'success');
+          toast(`${count} ${SOLDIER_NAMES[type]} joined your army`, 'success');
           await refreshStats();
           await loadBarracks();
         } catch (err) {
@@ -393,20 +393,20 @@
                 <div class="hero-avatar">⚔️</div>
                 <div class="hero-info">
                   <div class="hero-name">${h.name}</div>
-                  <div class="hero-lvl">سطح <span class="num">${fmt(h.level)}</span></div>
+                  <div class="hero-lvl">Level <span class="num">${fmt(h.level)}</span></div>
                   <div class="hero-mods">
-                    <span>حمله: <span class="atk num">+${fmt(Math.round(h.attack_mod * 100))}٪</span></span>
-                    <span>دفاع: <span class="def num">+${fmt(Math.round(h.defense_mod * 100))}٪</span></span>
+                    <span>Attack: <span class="atk num">+${fmt(Math.round(h.attack_mod * 100))}%</span></span>
+                    <span>Defense: <span class="def num">+${fmt(Math.round(h.defense_mod * 100))}%</span></span>
                   </div>
                   <div class="hero-xp">
-                    <div class="progress-label"><span>تجربه</span><span class="num">${fmt(h.xp)} / ${fmt(h.level * 250)}</span></div>
+                    <div class="progress-label"><span>Experience</span><span class="num">${fmt(h.xp)} / ${fmt(h.level * 250)}</span></div>
                     <div class="progress"><div class="fill" style="width:${heroXpPct(h)}%"></div></div>
                   </div>
                 </div>
               </div>`
             )
             .join('')
-        : '<p class="empty">هنوز قهرمانی ندارید.</p>';
+        : '<p class="empty">You have no heroes yet.</p>';
     } catch (err) {
       $('heroes-list').innerHTML = `<p class="empty">${err.message}</p>`;
     }
@@ -419,7 +419,7 @@
       window.GorzBattle.battlePage();
       battleRendered = true;
     } else {
-      $('battle-page').innerHTML = '<div class="placeholder">موتور نبرد در حال بارگذاری است…</div>';
+      $('battle-page').innerHTML = '<div class="placeholder">Battle engine is loading…</div>';
     }
   }
 
@@ -439,24 +439,24 @@
   }
 
   function renderListings(listings, { buyable }) {
-    if (!listings.length) return '<p class="empty">آگهی‌ای ثبت نشده است.</p>';
+    if (!listings.length) return '<p class="empty">No listings posted.</p>';
     return listings
       .map((l) => {
         const icon = l.item_type === 'diamond' ? '💎' : SOLDIER_ICONS[l.item_type] || '📦';
-        const name = l.item_type === 'diamond' ? 'الماس' : SOLDIER_NAMES[l.item_type] || l.item_type;
+        const name = l.item_type === 'diamond' ? 'Diamond' : SOLDIER_NAMES[l.item_type] || l.item_type;
         return `<div class="listing-item">
           <div class="li-info">
             <span class="li-icon">${icon}</span>
             <div>
               <span class="li-name">${name} <span class="li-qty num">× ${fmt(l.qty)}</span></span>
-              <span class="li-seller">فروشنده: <span class="mono">${l.seller_email || '—'}</span></span>
+              <span class="li-seller">Seller: <span class="mono">${l.seller_email || '—'}</span></span>
             </div>
           </div>
           <div class="flex">
             <span class="li-price num">${fmt(l.price_gold)} 🪙</span>
             ${buyable
-              ? `<button class="btn btn-sm btn-primary buy-btn" data-id="${l.id}" data-name="${name}">خرید</button>`
-              : `<button class="btn btn-sm btn-danger cancel-btn" data-id="${l.id}">لغو</button>`}
+              ? `<button class="btn btn-sm btn-primary buy-btn" data-id="${l.id}" data-name="${name}">Buy</button>`
+              : `<button class="btn btn-sm btn-danger cancel-btn" data-id="${l.id}">Cancel</button>`}
           </div>
         </div>`;
       })
@@ -469,7 +469,7 @@
         btn.disabled = true;
         try {
           await api('/api/market/buy', { method: 'POST', body: JSON.stringify({ listing_id: Number(btn.dataset.id) }) });
-          toast(`خرید ${btn.dataset.name} موفق بود`, 'success');
+          toast(`Bought ${btn.dataset.name} successfully`, 'success');
           await refreshStats();
           await loadMarket();
         } catch (err) {
@@ -483,7 +483,7 @@
         btn.disabled = true;
         try {
           await api('/api/market/cancel', { method: 'POST', body: JSON.stringify({ listing_id: Number(btn.dataset.id) }) });
-          toast('آگهی لغو شد', 'info');
+          toast('Listing cancelled', 'info');
           await loadMarket();
         } catch (err) {
           toast(err.message, 'error');
@@ -501,13 +501,13 @@
       const item_type = $('sell-type').value;
       const qty = parseInt($('sell-qty').value, 10) || 0;
       const price_gold = parseInt($('sell-price').value, 10) || 0;
-      if (qty <= 0 || price_gold <= 0) return toast('تعداد و قیمت معتبر وارد کنید.', 'error');
+      if (qty <= 0 || price_gold <= 0) return toast('Enter a valid quantity and price.', 'error');
       try {
         await api('/api/market/list', {
           method: 'POST',
           body: JSON.stringify({ item_type, qty, price_gold }),
         });
-        toast('آگهی ثبت شد', 'success');
+        toast('Listing created', 'success');
         await refreshStats();
         await loadMarket();
       } catch (err) {
@@ -534,7 +534,7 @@
               </li>`
             )
             .join('')}</ul>`
-        : '<p class="empty">تراکنشی ثبت نشده است.</p>';
+        : '<p class="empty">No transactions recorded.</p>';
     } catch (err) {
       $('bank-ledger').innerHTML = `<p class="empty">${err.message}</p>`;
     }
@@ -549,15 +549,15 @@
             .map((m) => {
               const rewards = [];
               if (m.reward_gold) rewards.push(`<span class="gold">🪙 ${fmt(m.reward_gold)}</span>`);
-              if (m.reward_xp) rewards.push(`<span class="xp">⚡ ${fmt(m.reward_xp)} تجربه</span>`);
+              if (m.reward_xp) rewards.push(`<span class="xp">⚡ ${fmt(m.reward_xp)} XP</span>`);
               if (m.reward_diamonds) rewards.push(`<span class="dia">💎 ${fmt(m.reward_diamonds)}</span>`);
               const done = !!m.done;
               return `<div class="mission-card ${done ? 'done' : ''}">
                 <div class="m-head">
                   <h4>${m.title_fa}</h4>
                   ${done
-                    ? '<span class="m-state">کامل شده ✓</span>'
-                    : `<button class="btn btn-sm btn-success claim-btn" data-id="${m.mission_id}">دریافت جایزه</button>`}
+                    ? '<span class="m-state">Completed ✓</span>'
+                    : `<button class="btn btn-sm btn-success claim-btn" data-id="${m.mission_id}">Claim reward</button>`}
                 </div>
                 <p class="m-desc">${m.desc_fa}</p>
                 <div class="progress">
@@ -567,7 +567,7 @@
               </div>`;
             })
             .join('')
-        : '<p class="empty">ماموریتی موجود نیست.</p>';
+        : '<p class="empty">No missions available.</p>';
       bindClaimButtons();
     } catch (err) {
       $('missions-list').innerHTML = `<p class="empty">${err.message}</p>`;
@@ -583,8 +583,8 @@
             method: 'POST',
             body: JSON.stringify({ mission_id: Number(btn.dataset.id) }),
           });
-          let msg = 'جایزه دریافت شد! 🎉';
-          if (res.levelUps > 0) msg += ` سطح فرمانده به ${fmt(res.level)} رسید!`;
+          let msg = 'Reward claimed! 🎉';
+          if (res.levelUps > 0) msg += ` Commander level up to ${fmt(res.level)}!`;
           toast(msg, 'success');
           await refreshStats();
           await loadMissions();
@@ -603,8 +603,8 @@
       $('ranking-list').innerHTML = ranking.length
         ? `<div class="tbl-wrap"><table class="tbl">
             <thead><tr>
-              <th>رتبه</th><th>فرمانده</th><th>سطح</th>
-              <th>امتیاز</th><th>برد</th><th>باخت</th>
+              <th>Rank</th><th>Commander</th><th>Level</th>
+              <th>Score</th><th>Wins</th><th>Losses</th>
             </tr></thead>
             <tbody>
               ${ranking
@@ -613,7 +613,7 @@
                     const me = user && r.id === user.id;
                     const top = r.rank <= 3;
                     return `<tr class="${me ? 'me-row' : ''}">
-                      <td><div class="rank-row ${top ? 'top' + r.rank : ''}"><span class="rank-no">${fmt(r.rank)}</span>${me ? '<span class="rank-me">شما</span>' : ''}</div></td>
+                      <td><div class="rank-row ${top ? 'top' + r.rank : ''}"><span class="rank-no">${fmt(r.rank)}</span>${me ? '<span class="rank-me">You</span>' : ''}</div></td>
                       <td><span class="mono">${r.email}</span></td>
                       <td><span class="num">${fmt(r.level)}</span></td>
                       <td><span class="rank-score num">${fmt(r.ranking_score)}</span></td>
@@ -625,7 +625,7 @@
                 .join('')}
             </tbody>
           </table></div>`
-        : '<p class="empty">هنوز فرمانده‌ای ثبت نشده است.</p>';
+        : '<p class="empty">No commanders ranked yet.</p>';
     } catch (err) {
       $('ranking-list').innerHTML = `<p class="empty">${err.message}</p>`;
     }
