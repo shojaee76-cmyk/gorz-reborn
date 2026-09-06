@@ -267,6 +267,20 @@ function buildReport(agents, perGen) {
     dbFile: callerDb ? 'caller-managed (kept)' : 'throwaway (deleted)',
     generations: perGen,
     leaderboard: finalBoard,
+    // full roster of every agent that fought (names visible to the master)
+    roster: agents.slice()
+      .sort((a, b) => b.fitness - a.fitness)
+      .map((a) => ({
+        id: a.id,
+        name: a.name || null,
+        generation: a.generation,
+        fitness: a.fitness,
+        wins: a.wins,
+        losses: a.losses,
+        draws: a.draws,
+        fingerprint: a.fingerprint,
+        genome: a.genome,
+      })),
     champion: finalBoard[0] || null,
   };
 }

@@ -88,7 +88,7 @@
 
     <!-- ============ live leaderboard (needs the gorz server) ============ -->
     <section class="ar-section">
-      <h2 class="ar-section-title"><span class="tick"></span>Live agent leaderboard</h2>
+      <h2 class="ar-section-title"><span class="tick"></span>Agent roster</h2>
       <div class="ar-card" id="live-card">
         <table class="ar-table">
           <thead>
@@ -179,42 +179,61 @@
       return r.json();
     }
 
-    // ------------- live leaderboard (graceful when static) -------------
+    // ------------- roster: live server first, then cloud report -------------
+    function renderRows(agents) {
+      const tbody = $('#live-tbody');
+      if (!agents.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="ar-empty">No agents yet - run a tournament first.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = agents.map((a, i) => {
+        const comp = a.genome && a.genome.composition || {};
+        const s = Math.round((comp.swordsman || 0) * 100);
+        const ar = Math.round((comp.archer || 0) * 100);
+        const c = Math.max(0, 100 - s - ar);
+        const lineage = esc(a.lineage) || currentLineage || 'agent';
+        return `<tr>
+          <td class="ar-rank ${i === 0 ? 'top1' : i < 3 ? 'top3' : ''}">${i + 1}</td>
+          <td class="ar-name">${esc(a.name) || '<span class="anon">agent #' + a.id + '</span>'}</td>
+          <td><span class="ar-gen">${lineage}</span></td>
+          <td><span class="ar-gen">${a.generation}</span></td>
+          <td class="ar-fitness">${fmt(a.fitness)}</td>
+          <td class="ar-wld"><span class="w">${a.wins}</span>/<span class="l">${a.losses}</span>/<span class="d">${a.draws}</span></td>
+          <td><div class="ar-comp" title="${s}% swordsman / ${ar}% archer / ${c}% cavalry">
+            <div class="seg s" style="width:${s}%"></div>
+            <div class="seg a" style="width:${ar}%"></div>
+            <div class="seg c" style="width:${c}%"></div>
+          </div></td>
+        </tr>`;
+      }).join('');
+    }
+
+    let currentLineage = null;
+
     async function loadLive() {
       const badge = $('#server-badge');
-      const tbody = $('#live-tbody');
+      // 1) a live gorz server (local dev) answers?
       try {
         const data = await fetchJSON('/api/agent/population?limit=20');
         const agents = (data.agents || []).sort((a, b) => (b.fitness || 0) - (a.fitness || 0));
         badge.textContent = 'server: live';
         badge.className = 'ar-badge live';
-        if (!agents.length) {
-          tbody.innerHTML = '<tr><td colspan="7" class="ar-empty">No agents yet - run a tournament first.</td></tr>';
-          return;
-        }
-        tbody.innerHTML = agents.map((a, i) => {
-          const comp = a.genome && a.genome.composition || {};
-          const s = Math.round((comp.swordsman || 0) * 100);
-          const ar = Math.round((comp.archer || 0) * 100);
-          const c = Math.max(0, 100 - s - ar);
-          return `<tr>
-            <td class="ar-rank ${i === 0 ? 'top1' : i < 3 ? 'top3' : ''}">${i + 1}</td>
-            <td class="ar-name">${esc(a.name) || '<span class="anon">agent #' + a.id + '</span>'}</td>
-            <td><span class="ar-gen">${esc(a.lineage)}</span></td>
-            <td><span class="ar-gen">${a.generation}</span></td>
-            <td class="ar-fitness">${fmt(a.fitness)}</td>
-            <td class="ar-wld"><span class="w">${a.wins}</span>/<span class="l">${a.losses}</span>/<span class="d">${a.draws}</span></td>
-            <td><div class="ar-comp" title="${s}% swordsman / ${ar}% archer / ${c}% cavalry">
-              <div class="seg s" style="width:${s}%"></div>
-              <div class="seg a" style="width:${ar}%"></div>
-              <div class="seg c" style="width:${c}%"></div>
-            </div></td>
-          </tr>`;
-        }).join('');
-      } catch (e) {
-        badge.textContent = 'server: offline (static view)';
+        renderRows(agents);
+        return;
+      } catch (e) { /* no server: fall through to the cloud report */ }
+      // 2) cloud tournament report (static arena on Netlify)
+      try {
+        const r = await fetchJSON('report.json');
+        currentLineage = esc(r.lineage) || null;
+        const agents = (r.roster || r.leaderboard || []).sort((a, b) => (b.fitness || 0) - (a.fitness || 0));
+        const when = (r.finishedAt || '').slice(0, 10);
+        badge.textContent = 'cloud run: ' + (r.lineage || '?') + (when ? ' - ' + when : '');
+        badge.className = 'ar-badge live';
+        renderRows(agents);
+      } catch (e2) {
+        badge.textContent = 'no data yet';
         badge.className = 'ar-badge err';
-        tbody.innerHTML = '<tr><td colspan="7" class="ar-empty">Live leaderboard needs the gorz server. The report below works fully offline.</td></tr>';
+        $('#live-tbody').innerHTML = '<tr><td colspan="7" class="ar-empty">No live server and no bundled report. Run a tournament first.</td></tr>';
       }
     }
 
