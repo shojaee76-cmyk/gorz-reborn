@@ -7,9 +7,9 @@
     "baseSeed": 42,
     "topN": 5
   },
-  "startedAt": "2026-09-06T00:35:50.431Z",
-  "finishedAt": "2026-09-06T00:35:51.325Z",
-  "durationMs": 894,
+  "startedAt": "2026-09-06T00:37:58.294Z",
+  "finishedAt": "2026-09-06T00:37:59.524Z",
+  "durationMs": 1230,
   "dbFile": "throwaway (deleted)",
   "generations": [
     {
